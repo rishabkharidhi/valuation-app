@@ -1676,6 +1676,7 @@ export default function App() {
     googleClientRef.current = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId.trim(),
       scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email",
+      prompt: "select_account",
       callback: async (tkn) => {
         if (tkn.access_token) {
           setGoogleToken(tkn.access_token);
