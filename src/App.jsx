@@ -1161,7 +1161,7 @@ function BankModal({bank, onSave, onClose}) {
 }
 
 // ─── Report Wrapper ────────────────────────────────────────────────────────────
-function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, googleEmail, onRequestGoogleAuth}) {
+function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, googleEmail, googleFolderId, onRequestGoogleAuth}) {
   const [sig, setSig] = useState(null);
   const [sigFont, setSigFont] = useState(null);
   const [sigColor, setSigColor] = useState(null);
@@ -1187,7 +1187,7 @@ function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, goog
     try {
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Valuation Report – ${v.ownerName||"Property"}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap"><style>body{font-family:'DM Sans',sans-serif;margin:0;padding:16px;font-size:12px;}img{max-width:100%;}</style></head><body>${rptRef.current?.innerHTML||""}</body></html>`;
       const fileName = `Valuation_${v.ownerName||"Report"}_${v.reportDate||today()}.html`;
-      const metadata = { name: fileName, mimeType: "application/vnd.google-apps.document" };
+      const metadata = { name: fileName, mimeType: "application/vnd.google-apps.document", ...(googleFolderId ? { parents: [googleFolderId] } : {}) };
       const boundary = "fo0o";
       const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: text/html\r\n\r\n${html}\r\n--${boundary}--`;
       const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
@@ -1602,6 +1602,7 @@ const DEMO_BANKS = [
 // ─── Google Drive Setup Modal ──────────────────────────────────────────────────
 function GoogleSetupModal({onClose, onConnect}) {
   const [clientId, setClientId] = useState("");
+  const [folderId, setFolderId] = useState(() => { try { return localStorage.getItem("kpsb_drive_folder")||""; } catch { return ""; } });
   return (
     <div className="sig-pad-overlay" onClick={onClose}>
       <div className="sig-pad-modal" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
@@ -1611,16 +1612,21 @@ function GoogleSetupModal({onClose, onConnect}) {
           <li>Go to <strong>console.cloud.google.com</strong></li>
           <li>Create project → APIs &amp; Services → Credentials</li>
           <li>Create OAuth 2.0 Client ID (Web Application)</li>
-          <li>Add <strong>https://claude.ai</strong> as Authorised JavaScript Origin</li>
+          <li>Add <strong>https://rishabkharidhi.com</strong> as Authorised JavaScript Origin</li>
           <li>Copy Client ID and paste below</li>
         </ol>
         <div className="field" style={{marginBottom:14}}>
           <label>Google OAuth Client ID</label>
           <input value={clientId} onChange={e=>setClientId(e.target.value)} placeholder="xxxxxxxx.apps.googleusercontent.com" style={{fontSize:11,fontFamily:"monospace"}}/>
         </div>
+        <div className="field" style={{marginBottom:14}}>
+          <label>Google Drive Folder ID <span style={{fontWeight:400,color:"var(--ink2)"}}>(optional — paste from folder URL)</span></label>
+          <input value={folderId} onChange={e=>{ setFolderId(e.target.value); try{localStorage.setItem("kpsb_drive_folder",e.target.value);}catch{} }} placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs" style={{fontSize:11,fontFamily:"monospace"}}/>
+          <div style={{fontSize:10,color:"var(--ink2)",marginTop:4}}>Open your Drive folder → copy the ID from the URL: drive.google.com/drive/folders/<strong>THIS_PART</strong></div>
+        </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <button className="btn btn-outline btn-sm" onClick={onClose}>Cancel</button>
-          <button className="btn btn-gold" onClick={()=>onConnect(clientId)}>Connect &amp; Sign In with Google</button>
+          <button className="btn btn-gold" onClick={()=>onConnect(clientId, folderId)}>Connect &amp; Sign In with Google</button>
         </div>
       </div>
     </div>
@@ -1647,6 +1653,7 @@ export default function App() {
   const [bankModal, setBankModal] = useState(null);
   const [googleEmail, setGoogleEmail] = useState(null);
   const [googleToken, setGoogleToken] = useState(null);
+  const [googleFolderId, setGoogleFolderId] = useState(() => { try { return localStorage.getItem("kpsb_drive_folder")||""; } catch { return ""; } });
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
   const googleClientRef = useRef(null);
 
@@ -1670,8 +1677,9 @@ export default function App() {
     document.head.appendChild(s);
   });
 
-  const connectGoogle = async (clientId) => {
+  const connectGoogle = async (clientId, folderId) => {
     if (!clientId.trim()) return;
+    if (folderId) { setGoogleFolderId(folderId); try { localStorage.setItem("kpsb_drive_folder", folderId); } catch {} }
     await loadGSI();
     googleClientRef.current = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId.trim(),
@@ -1700,7 +1708,7 @@ export default function App() {
     const bank = selBank||banks.find(b=>b.id===curVal.bankId);
     return (<>
       {showGoogleSetup && <GoogleSetupModal onClose={()=>setShowGoogleSetup(false)} onConnect={connectGoogle}/>}
-      <Report val={curVal} bank={bank} onEdit={()=>setView("form")} onBack={()=>{setSelBank(bank);setView("bank");}} onConvertFormat={convertFormat} googleToken={googleToken} googleEmail={googleEmail} onRequestGoogleAuth={requestGoogleAuth}/>
+      <Report val={curVal} bank={bank} onEdit={()=>setView("form")} onBack={()=>{setSelBank(bank);setView("bank");}} onConvertFormat={convertFormat} googleToken={googleToken} googleEmail={googleEmail} googleFolderId={googleFolderId} onRequestGoogleAuth={requestGoogleAuth}/>
     </>);
   }
   if (view==="form"&&curVal) {
