@@ -1236,6 +1236,19 @@ function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, goog
               </button>
         )}
         {driveStatus==="error" && <span style={{fontSize:11,color:"#ff9999"}}>Upload failed</span>}
+        <button className="btn btn-outline" style={{color:"white",borderColor:"rgba(255,255,255,.4)"}} onClick={()=>{
+          const w = window.open("","_blank");
+          w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+            <title>Valuation_${v.ownerName||"Report"}_${v.reportDate||today()}</title>
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap">
+            <style>
+              @page { margin: 12mm; }
+              body { font-family:'DM Sans',sans-serif; margin:0; padding:0; font-size:12px; }
+              img { max-width:100%; }
+            </style>
+          </head><body>${rptRef.current?.innerHTML||""}<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script></body></html>`);
+          w.document.close();
+        }}>⬇️ Download PDF</button>
         <button className="btn btn-outline" style={{color:"white",borderColor:"rgba(255,255,255,.4)"}} onClick={()=>window.print()}>🖨️ Print</button>
         <GBtn onClick={onBack}>← Back</GBtn>
       </Header>
