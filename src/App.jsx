@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 
+// ── Google Drive config ────────────────────────────────────────────────────────
+const GOOGLE_CLIENT_ID = "YOUR_CLIENT_ID.apps.googleusercontent.com";
+const GOOGLE_FOLDER_ID = "1SvxbgQqujL9kO2w3QXZpNUFCazyWvu43";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 const today = () => new Date().toISOString().split("T")[0];
@@ -1603,32 +1606,17 @@ const DEMO_BANKS = [
 
 // ─── Google Drive Setup Modal ──────────────────────────────────────────────────
 function GoogleSetupModal({onClose, onConnect}) {
-  const [clientId, setClientId] = useState(() => { try { return localStorage.getItem("kpsb_oauth_client")||""; } catch { return ""; } });
-  const [folderId, setFolderId] = useState(() => { try { return localStorage.getItem("kpsb_drive_folder")||""; } catch { return ""; } });
   return (
     <div className="sig-pad-overlay" onClick={onClose}>
-      <div className="sig-pad-modal" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:17,color:"var(--blue)",marginBottom:6}}>Connect Google Drive</div>
-        <div style={{fontSize:12,color:"var(--ink2)",marginBottom:10,lineHeight:1.7}}>A Google OAuth Client ID is required (free, 2-min setup):</div>
-        <ol style={{fontSize:12,color:"var(--ink2)",lineHeight:2.1,paddingLeft:20,marginBottom:14}}>
-          <li>Go to <strong>console.cloud.google.com</strong></li>
-          <li>Create project → APIs &amp; Services → Credentials</li>
-          <li>Create OAuth 2.0 Client ID (Web Application)</li>
-          <li>Add <strong>https://rishabkharidhi.com</strong> as Authorised JavaScript Origin</li>
-          <li>Copy Client ID and paste below</li>
-        </ol>
-        <div className="field" style={{marginBottom:14}}>
-          <label>Google OAuth Client ID</label>
-          <input value={clientId} onChange={e=>{ setClientId(e.target.value); try{localStorage.setItem("kpsb_oauth_client",e.target.value);}catch{} }} placeholder="xxxxxxxx.apps.googleusercontent.com" style={{fontSize:11,fontFamily:"monospace"}}/>
-        </div>
-        <div className="field" style={{marginBottom:14}}>
-          <label>Google Drive Folder ID <span style={{fontWeight:400,color:"var(--ink2)"}}>(optional — paste from folder URL)</span></label>
-          <input value={folderId} onChange={e=>{ setFolderId(e.target.value); try{localStorage.setItem("kpsb_drive_folder",e.target.value);}catch{} }} placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs" style={{fontSize:11,fontFamily:"monospace"}}/>
-          <div style={{fontSize:10,color:"var(--ink2)",marginTop:4}}>Open your Drive folder → copy the ID from the URL: drive.google.com/drive/folders/<strong>THIS_PART</strong></div>
-        </div>
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+      <div className="sig-pad-modal" style={{maxWidth:380,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:36,marginBottom:12}}>📂</div>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:17,color:"var(--blue)",marginBottom:8}}>Connect Google Drive</div>
+        <div style={{fontSize:12,color:"var(--ink2)",marginBottom:20,lineHeight:1.7}}>Sign in with your Google account to enable uploading valuation reports directly to Drive.</div>
+        <div style={{display:"flex",gap:8,justifyContent:"center"}}>
           <button className="btn btn-outline btn-sm" onClick={onClose}>Cancel</button>
-          <button className="btn btn-gold" onClick={()=>onConnect(clientId, folderId)}>Connect &amp; Sign In with Google</button>
+          <button className="btn btn-gold" onClick={()=>onConnect(GOOGLE_CLIENT_ID, GOOGLE_FOLDER_ID)}>
+            <span style={{fontSize:14}}>🔗</span> Connect Google Drive
+          </button>
         </div>
       </div>
     </div>
@@ -1655,7 +1643,7 @@ export default function App() {
   const [bankModal, setBankModal] = useState(null);
   const [googleEmail, setGoogleEmail] = useState(null);
   const [googleToken, setGoogleToken] = useState(null);
-  const [googleFolderId, setGoogleFolderId] = useState(() => { try { return localStorage.getItem("kpsb_drive_folder")||""; } catch { return ""; } });
+  const [googleFolderId, setGoogleFolderId] = useState(GOOGLE_FOLDER_ID);
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
   const googleClientRef = useRef(null);
 
