@@ -4,6 +4,9 @@ import { useState, useRef, useEffect } from "react";
 const GOOGLE_CLIENT_ID = "484328350633-87dqplme1r4vmodmpufrou98h1t8e6g6.apps.googleusercontent.com";
 const GOOGLE_FOLDER_ID = "1SvxbgQqujL9kO2w3QXZpNUFCazyWvu43";
 
+// Module-level Google session — survives all React re-renders
+const gSession = { token: null, email: null, client: null };
+
 const uid = () => Math.random().toString(36).slice(2, 9);
 const today = () => new Date().toISOString().split("T")[0];
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN");
@@ -1645,25 +1648,10 @@ export default function App() {
   const [selBank, setSelBank] = useState(null);
   const [curVal, setCurVal] = useState(null);
   const [bankModal, setBankModal] = useState(null);
-  const [googleEmail, setGoogleEmail] = useState(null);
-  const [googleToken, setGoogleToken] = useState(null);
-  const googleTokenRef = useRef(null);
-  const [googleFolderId, setGoogleFolderId] = useState(GOOGLE_FOLDER_ID);
+  const [googleEmail, setGoogleEmail] = useState(gSession.email);
+  const [googleToken, setGoogleToken] = useState(gSession.token);
+  const [googleFolderId] = useState(GOOGLE_FOLDER_ID);
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
-  const googleClientRef = useRef(null);
-  const pendingUploadRef = useRef(null);
-
-  const saveBank = (b) => { setBanks(bs => bs.some(x=>x.id===b.id) ? bs.map(x=>x.id===b.id?b:x) : [...bs,b]); setBankModal(null); };
-  const delBank  = (id) => { if(!confirm("Delete this bank and all its valuations?")) return; setBanks(bs=>bs.filter(b=>b.id!==id)); setValuations(vs=>vs.filter(v=>v.bankId!==id)); };
-  const saveVal  = (v, stayOnView=false)  => { setValuations(vs => vs.some(x=>x.id===v.id) ? vs.map(x=>x.id===v.id?v:x) : [...vs,v]); setCurVal(v); if (!stayOnView) setView(v.status==="done"?"report":"bank"); };
-  const delVal   = (id) => { if(!confirm("Delete this valuation?")) setValuations(vs=>vs.filter(v=>v.id!==id)); };
-  const openVal  = (v, forceReport=false) => { setCurVal(v); setView(forceReport||v.status==="done"?"report":"form"); };
-  const convertFormat = (newTemplate) => {
-    if (!selBank) return;
-    const updated = {...selBank, reportTemplate:newTemplate};
-    setBanks(bs => bs.map(b=>b.id===selBank.id?updated:b));
-    setSelBank(updated);
-  };
 
   const loadGSI = () => new Promise((res) => {
     if (window.google?.accounts?.oauth2) { res(); return; }
@@ -1675,32 +1663,48 @@ export default function App() {
 
   const connectGoogle = async (clientId, folderId, onTokenReady) => {
     if (!clientId.trim()) return;
-    if (folderId) { setGoogleFolderId(folderId); }
     await loadGSI();
-    googleClientRef.current = window.google.accounts.oauth2.initTokenClient({
+    gSession.client = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId.trim(),
       scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email",
       callback: async (tkn) => {
         if (tkn.access_token) {
-          googleTokenRef.current = tkn.access_token;
+          gSession.token = tkn.access_token;
           setGoogleToken(tkn.access_token);
           try {
             const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", { headers:{ Authorization:"Bearer "+tkn.access_token } });
             const info = await r.json();
-            setGoogleEmail(info.email||"Google Account");
-          } catch { setGoogleEmail("Google Account"); }
+            gSession.email = info.email || "Google Account";
+            setGoogleEmail(gSession.email);
+          } catch { gSession.email = "Google Account"; setGoogleEmail("Google Account"); }
           setShowGoogleSetup(false);
           if (onTokenReady) onTokenReady(tkn.access_token);
-          if (pendingUploadRef.current) { pendingUploadRef.current(tkn.access_token); pendingUploadRef.current = null; }
         }
       }
     });
-    googleClientRef.current.requestAccessToken({ prompt: "select_account" });
+    gSession.client.requestAccessToken({ prompt: "select_account" });
   };
 
   const requestGoogleAuth = (onTokenReady) => {
-    if (googleTokenRef.current) { onTokenReady && onTokenReady(googleTokenRef.current); return; }
+    if (gSession.token) { onTokenReady && onTokenReady(gSession.token); return; }
     connectGoogle(GOOGLE_CLIENT_ID, GOOGLE_FOLDER_ID, onTokenReady);
+  };
+
+  const disconnectGoogle = () => {
+    gSession.token = null; gSession.email = null; gSession.client = null;
+    setGoogleToken(null); setGoogleEmail(null);
+  };
+
+  const saveBank = (b) => { setBanks(bs => bs.some(x=>x.id===b.id) ? bs.map(x=>x.id===b.id?b:x) : [...bs,b]); setBankModal(null); };
+  const delBank  = (id) => { if(!confirm("Delete this bank and all its valuations?")) return; setBanks(bs=>bs.filter(b=>b.id!==id)); setValuations(vs=>vs.filter(v=>v.bankId!==id)); };
+  const saveVal  = (v, stayOnView=false)  => { setValuations(vs => vs.some(x=>x.id===v.id) ? vs.map(x=>x.id===v.id?v:x) : [...vs,v]); setCurVal(v); if (!stayOnView) setView(v.status==="done"?"report":"bank"); };
+  const delVal   = (id) => { if(!confirm("Delete this valuation?")) return; setValuations(vs=>vs.filter(v=>v.id!==id)); };
+  const openVal  = (v, forceReport=false) => { setCurVal(v); setView(forceReport||v.status==="done"?"report":"form"); };
+  const convertFormat = (newTemplate) => {
+    if (!selBank) return;
+    const updated = {...selBank, reportTemplate:newTemplate};
+    setBanks(bs => bs.map(b=>b.id===selBank.id?updated:b));
+    setSelBank(updated);
   };
 
   if (view==="report"&&curVal) {
@@ -1728,7 +1732,7 @@ export default function App() {
           ? <div style={{display:"flex",alignItems:"center",gap:7,background:"rgba(255,255,255,.12)",padding:"5px 12px",borderRadius:20}}>
               <span style={{fontSize:18}}>🔒</span>
               <div><div style={{fontSize:11,fontWeight:600,color:"white"}}>{googleEmail}</div><div style={{fontSize:9,opacity:.7,color:"white"}}>Google Drive connected</div></div>
-              <button className="btn btn-sm" style={{background:"rgba(255,255,255,.15)",color:"white",border:"none",padding:"2px 8px",borderRadius:10,fontSize:10,cursor:"pointer"}} onClick={()=>{setGoogleEmail(null);setGoogleToken(null);googleClientRef.current=null;}}>Disconnect</button>
+              <button className="btn btn-sm" style={{background:"rgba(255,255,255,.15)",color:"white",border:"none",padding:"2px 8px",borderRadius:10,fontSize:10,cursor:"pointer"}} onClick={disconnectGoogle}>Disconnect</button>
             </div>
           : <button className="btn btn-outline" style={{color:"white",borderColor:"rgba(255,255,255,.4)",display:"flex",alignItems:"center",gap:6}} onClick={()=>setShowGoogleSetup(true)}>
               <span style={{fontSize:14}}>🔗</span> Connect Google Drive
