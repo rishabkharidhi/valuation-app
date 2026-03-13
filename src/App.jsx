@@ -1186,33 +1186,60 @@ function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, goog
     setShowSigModal(false);
   };
 
+  const loadHtml2pdf = () => new Promise((res) => {
+    if (window.html2pdf) { res(window.html2pdf); return; }
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+    s.onload = () => res(window.html2pdf);
+    document.head.appendChild(s);
+  });
+
+  const pdfOpts = () => ({
+    margin: [10, 10, 10, 10],
+    filename: `Valuation_${v.ownerName||"Report"}_${v.reportDate||today()}.pdf`,
+    image: { type: "jpeg", quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+    pagebreak: { mode: ["avoid-all", "css"] }
+  });
+
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const downloadPDF = async () => {
+    setPdfLoading(true);
+    try {
+      const lib = await loadHtml2pdf();
+      await lib().set(pdfOpts()).from(rptRef.current).save();
+    } catch(e) { alert("PDF generation failed: " + e.message); }
+    setPdfLoading(false);
+  };
+
   const uploadToDrive = async () => {
     const token = gSession.token;
-    if (!token) {
-      onRequestGoogleAuth();
-      return;
-    }
+    if (!token) { onRequestGoogleAuth(); return; }
     if (!sig) { alert("Please apply your signature before uploading."); return; }
     setDriveStatus("uploading");
     try {
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Valuation Report – ${v.ownerName||"Property"}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap"><style>body{font-family:'DM Sans',sans-serif;margin:0;padding:16px;font-size:12px;}img{max-width:100%;}</style></head><body>${rptRef.current?.innerHTML||""}</body></html>`;
-      const fileName = `Valuation_${v.ownerName||"Report"}_${v.reportDate||today()}.html`;
-      const metadata = { name: fileName, mimeType: "application/vnd.google-apps.document", ...(googleFolderId ? { parents: [googleFolderId] } : {}) };
-      const boundary = "fo0o";
-      const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: text/html\r\n\r\n${html}\r\n--${boundary}--`;
+      const lib = await loadHtml2pdf();
+      const pdfBlob = await lib().set(pdfOpts()).from(rptRef.current).outputPdf("blob");
+      const fileName = `Valuation_${v.ownerName||"Report"}_${v.reportDate||today()}.pdf`;
+      const metadata = { name: fileName, mimeType: "application/pdf", ...(googleFolderId ? { parents: [googleFolderId] } : {}) };
+      const form = new FormData();
+      form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+      form.append("file", pdfBlob, fileName);
       const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
         method: "POST",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": `multipart/related; boundary=${boundary}` },
-        body
+        headers: { "Authorization": "Bearer " + token },
+        body: form
       });
       const data = await res.json();
       if (data.id) {
-        const link = `https://docs.google.com/document/d/${data.id}/edit`;
+        const link = `https://drive.google.com/file/d/${data.id}/view`;
         setDriveLink(link);
         setDriveStatus("done");
         onSaveVal && onSaveVal({...v, driveLink: link});
       } else {
-        console.error("Drive upload error:", data);
+        console.error("Drive error:", data?.error?.code, data?.error?.message);
         setDriveStatus("error");
       }
     } catch(e) { console.error("Drive upload exception:", e); setDriveStatus("error"); }
@@ -1227,29 +1254,18 @@ function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, goog
         <GBtn onClick={onEdit}>✏️ Edit</GBtn>
         <GBtn onClick={()=>setShowConvert(true)}>🔄 Convert Format</GBtn>
         <GBtn onClick={()=>setShowSigModal(true)}>{sig?"✅ Re-sign":"✍️ Sign Report"}</GBtn>
+        <button className="btn btn-outline" style={{color:"white",borderColor:"rgba(255,255,255,.4)"}} onClick={downloadPDF} disabled={pdfLoading}>
+          {pdfLoading ? "⏳ Generating..." : "⬇️ Download PDF"}
+        </button>
         {sig && (
           driveStatus==="done"
             ? <a href={driveLink} target="_blank" rel="noreferrer" className="btn btn-gold" style={{textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>📂 Open in Drive</a>
             : <button className="btn btn-gold" onClick={uploadToDrive} disabled={driveStatus==="uploading"} style={{display:"flex",alignItems:"center",gap:5}}>
-                {driveStatus==="uploading"?"⏳ Uploading...":"📤 Upload to Drive"}
+                {driveStatus==="uploading"?"⏳ Uploading...":"📤 Upload PDF to Drive"}
                 {!googleEmail && <span style={{fontSize:9,opacity:.8,background:"rgba(255,255,255,.2)",borderRadius:10,padding:"1px 5px"}}>Login req.</span>}
               </button>
         )}
         {driveStatus==="error" && <span style={{fontSize:11,color:"#ff9999"}}>Upload failed</span>}
-        <button className="btn btn-outline" style={{color:"white",borderColor:"rgba(255,255,255,.4)"}} onClick={()=>{
-          const w = window.open("","_blank");
-          w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-            <title>Valuation_${v.ownerName||"Report"}_${v.reportDate||today()}</title>
-            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap">
-            <style>
-              @page { margin: 12mm; }
-              body { font-family:'DM Sans',sans-serif; margin:0; padding:0; font-size:12px; }
-              img { max-width:100%; }
-            </style>
-          </head><body>${rptRef.current?.innerHTML||""}<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script></body></html>`);
-          w.document.close();
-        }}>⬇️ Download PDF</button>
-        <button className="btn btn-outline" style={{color:"white",borderColor:"rgba(255,255,255,.4)"}} onClick={()=>window.print()}>🖨️ Print</button>
         <GBtn onClick={onBack}>← Back</GBtn>
       </Header>
       <div className="rpt-wrap">
