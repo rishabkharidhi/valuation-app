@@ -1186,11 +1186,11 @@ function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, goog
     setShowSigModal(false);
   };
 
-  const uploadToDrive = async (tokenOverride) => {
-    const token = tokenOverride || googleToken;
-    if (!token) { 
-      onRequestGoogleAuth((t) => uploadToDrive(t));
-      return; 
+  const uploadToDrive = async () => {
+    const token = gSession.token;
+    if (!token) {
+      onRequestGoogleAuth();
+      return;
     }
     if (!sig) { alert("Please apply your signature before uploading."); return; }
     setDriveStatus("uploading");
@@ -1211,8 +1211,11 @@ function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, goog
         setDriveLink(link);
         setDriveStatus("done");
         onSaveVal && onSaveVal({...v, driveLink: link});
-      } else { setDriveStatus("error"); }
-    } catch(e) { setDriveStatus("error"); }
+      } else {
+        console.error("Drive upload error:", data);
+        setDriveStatus("error");
+      }
+    } catch(e) { console.error("Drive upload exception:", e); setDriveStatus("error"); }
   };
 
   return (
@@ -1621,7 +1624,7 @@ function GoogleSetupModal({onClose, onConnect}) {
         <div style={{fontSize:12,color:"var(--ink2)",marginBottom:20,lineHeight:1.7}}>Sign in with your Google account to enable uploading valuation reports directly to Drive.</div>
         <div style={{display:"flex",gap:8,justifyContent:"center"}}>
           <button className="btn btn-outline btn-sm" onClick={onClose}>Cancel</button>
-          <button className="btn btn-gold" onClick={()=>onConnect(GOOGLE_CLIENT_ID, GOOGLE_FOLDER_ID)}>
+          <button className="btn btn-gold" onClick={()=>onConnect()}>
             <span style={{fontSize:14}}>🔗</span> Connect Google Drive
           </button>
         </div>
@@ -1661,11 +1664,10 @@ export default function App() {
     document.head.appendChild(s);
   });
 
-  const connectGoogle = async (clientId, folderId, onTokenReady) => {
-    if (!clientId.trim()) return;
+  const connectGoogle = async () => {
     await loadGSI();
     gSession.client = window.google.accounts.oauth2.initTokenClient({
-      client_id: clientId.trim(),
+      client_id: GOOGLE_CLIENT_ID,
       scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email",
       callback: async (tkn) => {
         if (tkn.access_token) {
@@ -1678,16 +1680,15 @@ export default function App() {
             setGoogleEmail(gSession.email);
           } catch { gSession.email = "Google Account"; setGoogleEmail("Google Account"); }
           setShowGoogleSetup(false);
-          if (onTokenReady) onTokenReady(tkn.access_token);
         }
       }
     });
     gSession.client.requestAccessToken({ prompt: "select_account" });
   };
 
-  const requestGoogleAuth = (onTokenReady) => {
-    if (gSession.token) { onTokenReady && onTokenReady(gSession.token); return; }
-    connectGoogle(GOOGLE_CLIENT_ID, GOOGLE_FOLDER_ID, onTokenReady);
+  const requestGoogleAuth = () => {
+    if (gSession.token) return;
+    connectGoogle(GOOGLE_CLIENT_ID, GOOGLE_FOLDER_ID);
   };
 
   const disconnectGoogle = () => {
