@@ -1284,21 +1284,29 @@ function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, goog
 const STEPS = ["Request","Location","Site Details","Valuation","Photos","Review"];
 
 function ValForm({valuation:init, bank, onSave, onCancel}) {
-  const [v, setV] = useState(init);
+  const DRAFT_KEY = `kpsb_draft_${init.id}`;
+  const [v, setV] = useState(() => {
+    try { const s = localStorage.getItem(DRAFT_KEY); return s ? JSON.parse(s) : init; } catch { return init; }
+  });
   const [step, setStep] = useState(0);
   const fileRef = useRef();
-  const upd = (k,val) => setV(c=>({...c,[k]:val}));
+  const upd = (k,val) => setV(c => {
+    const next = {...c,[k]:val};
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(next)); } catch {}
+    return next;
+  });
+  const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch {} };
   const calc = calcValuation(v);
   const depSug = suggestDep(v.constructionAge, v.constructionType);
-  const handleAge = (age) => setV(c=>({...c,constructionAge:age,depreciationPct:c.depreciationAuto?suggestDep(age,c.constructionType):c.depreciationPct}));
-  const handleConstr = (type) => setV(c=>({...c,constructionType:type,depreciationPct:c.depreciationAuto?suggestDep(c.constructionAge,type):c.depreciationPct}));
+  const handleAge = (age) => setV(c => { const next = {...c,constructionAge:age,depreciationPct:c.depreciationAuto?suggestDep(age,c.constructionType):c.depreciationPct}; try{localStorage.setItem(DRAFT_KEY,JSON.stringify(next));}catch{} return next; });
+  const handleConstr = (type) => setV(c => { const next = {...c,constructionType:type,depreciationPct:c.depreciationAuto?suggestDep(c.constructionAge,type):c.depreciationPct}; try{localStorage.setItem(DRAFT_KEY,JSON.stringify(next));}catch{} return next; });
   const handlePhotos = (files) => Array.from(files).forEach(file=>{
-    const r=new FileReader(); r.onload=e=>setV(c=>({...c,photos:[...(c.photos||[]),{id:uid(),url:e.target.result,caption:file.name.replace(/\.[^.]+$/,"")}]})); r.readAsDataURL(file);
+    const r=new FileReader(); r.onload=e=>setV(c=>{const next={...c,photos:[...(c.photos||[]),{id:uid(),url:e.target.result,caption:file.name.replace(/\.[^.]+$/,"")}]}; try{localStorage.setItem(DRAFT_KEY,JSON.stringify(next));}catch{} return next;}); r.readAsDataURL(file);
   });
-  const addCF = () => setV(c=>({...c,customFields:[...(c.customFields||[]),{id:uid(),label:"",value:""}]}));
-  const updCF = (id,k,val) => setV(c=>({...c,customFields:c.customFields.map(f=>f.id===id?{...f,[k]:val}:f)}));
-  const remCF = (id) => setV(c=>({...c,customFields:c.customFields.filter(f=>f.id!==id)}));
-  const doSave = (status) => onSave({...calcValuation(v),status});
+  const addCF = () => setV(c=>{const next={...c,customFields:[...(c.customFields||[]),{id:uid(),label:"",value:""}]}; try{localStorage.setItem(DRAFT_KEY,JSON.stringify(next));}catch{} return next;});
+  const updCF = (id,k,val) => setV(c=>{const next={...c,customFields:c.customFields.map(f=>f.id===id?{...f,[k]:val}:f)}; try{localStorage.setItem(DRAFT_KEY,JSON.stringify(next));}catch{} return next;});
+  const remCF = (id) => setV(c=>{const next={...c,customFields:c.customFields.filter(f=>f.id!==id)}; try{localStorage.setItem(DRAFT_KEY,JSON.stringify(next));}catch{} return next;});
+  const doSave = (status) => { clearDraft(); onSave({...calcValuation(v),status}); };
   const totalFloor = totalFloorArea(v);
   const farBUA = Math.round(parseFloat(v.landArea||0)*parseFloat(v.farConsidered||1.75));
 
@@ -1310,7 +1318,7 @@ function ValForm({valuation:init, bank, onSave, onCancel}) {
         <div className="page-header">
           <div>
             <div className="page-title">{v.ownerName||"New Valuation"}</div>
-            <div className="page-sub">{bank?"For: "+bank.name:""}{v.propertyAddress?" - "+v.propertyAddress:""}</div>
+            <div className="page-sub">{bank?"For: "+bank.name:""}{v.propertyAddress?" - "+v.propertyAddress:""} <span style={{color:"var(--sage)",fontSize:11}}>✓ Auto-saved</span></div>
           </div>
           <div style={{display:"flex",gap:8}}>
             <button className="btn btn-outline btn-sm" onClick={()=>doSave("progress")}>Save Draft</button>
