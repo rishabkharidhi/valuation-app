@@ -1283,7 +1283,7 @@ function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, goog
 // ─── Valuation Form ────────────────────────────────────────────────────────────
 const STEPS = ["Request","Location","Site Details","Valuation","Photos","Review"];
 
-function ValForm({valuation:init, bank, onSave, onCancel}) {
+function ValForm({valuation:init, bank, onSave, onCancel, onAutosave}) {
   const DRAFT_KEY = `kpsb_draft_${init.id}`;
   const [v, setV] = useState(() => {
     try { const s = localStorage.getItem(DRAFT_KEY); return s ? JSON.parse(s) : init; } catch { return init; }
@@ -1293,6 +1293,7 @@ function ValForm({valuation:init, bank, onSave, onCancel}) {
   const upd = (k,val) => setV(c => {
     const next = {...c,[k]:val};
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(next)); } catch {}
+    onAutosave && onAutosave(next);
     return next;
   });
   const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch {} };
@@ -1737,7 +1738,10 @@ export default function App() {
   const delBank  = (id) => { if(!confirm("Delete this bank and all its valuations?")) return; setBanks(bs=>bs.filter(b=>b.id!==id)); setValuations(vs=>vs.filter(v=>v.bankId!==id)); };
   const saveVal  = (v, stayOnView=false)  => { setValuations(vs => vs.some(x=>x.id===v.id) ? vs.map(x=>x.id===v.id?v:x) : [...vs,v]); setCurVal(v); if (!stayOnView) setView(v.status==="done"?"report":"bank"); };
   const delVal   = (id) => { if(!confirm("Delete this valuation?")) return; setValuations(vs=>vs.filter(v=>v.id!==id)); };
-  const openVal  = (v, forceReport=false) => { setCurVal(v); setView(forceReport||v.status==="done"?"report":"form"); };
+  const openVal  = (v, forceReport=false) => {
+    try { const s = localStorage.getItem(`kpsb_draft_${v.id}`); if (s) v = JSON.parse(s); } catch {}
+    setCurVal(v); setView(forceReport||v.status==="done"?"report":"form");
+  };
   const convertFormat = (newTemplate) => {
     if (!selBank) return;
     const updated = {...selBank, reportTemplate:newTemplate};
@@ -1754,10 +1758,9 @@ export default function App() {
   }
   if (view==="form"&&curVal) {
     const bank = selBank||banks.find(b=>b.id===curVal.bankId);
-    return <ValForm valuation={curVal} bank={bank} onSave={saveVal} onCancel={()=>setView("bank")}/>;
-  }
+    return <ValForm valuation={curVal} bank={bank} onSave={saveVal} onCancel={()=>setView("bank")} onAutosave={v=>setValuations(vs=>vs.map(x=>x.id===v.id?v:x))}/>;  }
   if (view==="bank"&&selBank) {
-    return <BankDetail bank={selBank} valuations={valuations} onNew={()=>{setCurVal(defaultVal(selBank.id));setView("form");}} onOpenVal={openVal} onDeleteVal={delVal} onBack={()=>setView("dashboard")}/>;
+    return <BankDetail bank={selBank} valuations={valuations} onNew={()=>{const nv=defaultVal(selBank.id);setCurVal(nv);setValuations(vs=>[...vs,nv]);setView("form");}} onOpenVal={openVal} onDeleteVal={delVal} onBack={()=>setView("dashboard")}/>;
   }
 
   return (
