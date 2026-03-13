@@ -1603,7 +1603,7 @@ const DEMO_BANKS = [
 
 // ─── Google Drive Setup Modal ──────────────────────────────────────────────────
 function GoogleSetupModal({onClose, onConnect}) {
-  const [clientId, setClientId] = useState("");
+  const [clientId, setClientId] = useState(() => { try { return localStorage.getItem("kpsb_oauth_client")||""; } catch { return ""; } });
   const [folderId, setFolderId] = useState(() => { try { return localStorage.getItem("kpsb_drive_folder")||""; } catch { return ""; } });
   return (
     <div className="sig-pad-overlay" onClick={onClose}>
@@ -1619,7 +1619,7 @@ function GoogleSetupModal({onClose, onConnect}) {
         </ol>
         <div className="field" style={{marginBottom:14}}>
           <label>Google OAuth Client ID</label>
-          <input value={clientId} onChange={e=>setClientId(e.target.value)} placeholder="xxxxxxxx.apps.googleusercontent.com" style={{fontSize:11,fontFamily:"monospace"}}/>
+          <input value={clientId} onChange={e=>{ setClientId(e.target.value); try{localStorage.setItem("kpsb_oauth_client",e.target.value);}catch{} }} placeholder="xxxxxxxx.apps.googleusercontent.com" style={{fontSize:11,fontFamily:"monospace"}}/>
         </div>
         <div className="field" style={{marginBottom:14}}>
           <label>Google Drive Folder ID <span style={{fontWeight:400,color:"var(--ink2)"}}>(optional — paste from folder URL)</span></label>
