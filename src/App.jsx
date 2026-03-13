@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 
 // ── Google Drive config ────────────────────────────────────────────────────────
-const GOOGLE_CLIENT_ID = "YOUR_CLIENT_ID.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = "484328350633-87dqplme1r4vmodmpufrou98h1t8e6g6.apps.googleusercontent.com";
 const GOOGLE_FOLDER_ID = "1SvxbgQqujL9kO2w3QXZpNUFCazyWvu43";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -1690,8 +1690,8 @@ export default function App() {
   };
 
   const requestGoogleAuth = () => {
-    if (googleClientRef.current) googleClientRef.current.requestAccessToken({ prompt: "select_account" });
-    else setShowGoogleSetup(true);
+    googleClientRef.current = null;
+    connectGoogle(GOOGLE_CLIENT_ID, GOOGLE_FOLDER_ID);
   };
 
   if (view==="report"&&curVal) {
