@@ -1161,14 +1161,14 @@ function BankModal({bank, onSave, onClose}) {
 }
 
 // ─── Report Wrapper ────────────────────────────────────────────────────────────
-function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, googleEmail, googleFolderId, onRequestGoogleAuth}) {
+function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, googleEmail, googleFolderId, onRequestGoogleAuth, onSaveVal}) {
   const [sig, setSig] = useState(null);
   const [sigFont, setSigFont] = useState(null);
   const [sigColor, setSigColor] = useState(null);
   const [showSigModal, setShowSigModal] = useState(false);
   const [showConvert, setShowConvert] = useState(false);
-  const [driveStatus, setDriveStatus] = useState(null); // null | "uploading" | "done" | "error"
-  const [driveLink, setDriveLink] = useState(null);
+  const [driveStatus, setDriveStatus] = useState(v.driveLink ? "done" : null);
+  const [driveLink, setDriveLink] = useState(v.driveLink || null);
   const col = bank?.color || "var(--blue)";
   const tmplLabel = TEMPLATES.find(t=>t.id===(bank?.reportTemplate||"sectional"))?.label || "Sectional";
   const rptRef = useRef();
@@ -1197,8 +1197,10 @@ function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, goog
       });
       const data = await res.json();
       if (data.id) {
-        setDriveLink(`https://docs.google.com/document/d/${data.id}/edit`);
+        const link = `https://docs.google.com/document/d/${data.id}/edit`;
+        setDriveLink(link);
         setDriveStatus("done");
+        onSaveVal && onSaveVal({...v, driveLink: link});
       } else { setDriveStatus("error"); }
     } catch(e) { setDriveStatus("error"); }
   };
@@ -1659,7 +1661,7 @@ export default function App() {
 
   const saveBank = (b) => { setBanks(bs => bs.some(x=>x.id===b.id) ? bs.map(x=>x.id===b.id?b:x) : [...bs,b]); setBankModal(null); };
   const delBank  = (id) => { if(!confirm("Delete this bank and all its valuations?")) return; setBanks(bs=>bs.filter(b=>b.id!==id)); setValuations(vs=>vs.filter(v=>v.bankId!==id)); };
-  const saveVal  = (v)  => { setValuations(vs => vs.some(x=>x.id===v.id) ? vs.map(x=>x.id===v.id?v:x) : [...vs,v]); setCurVal(v); setView(v.status==="done"?"report":"bank"); };
+  const saveVal  = (v, stayOnView=false)  => { setValuations(vs => vs.some(x=>x.id===v.id) ? vs.map(x=>x.id===v.id?v:x) : [...vs,v]); setCurVal(v); if (!stayOnView) setView(v.status==="done"?"report":"bank"); };
   const delVal   = (id) => { if(!confirm("Delete this valuation?")) setValuations(vs=>vs.filter(v=>v.id!==id)); };
   const openVal  = (v, forceReport=false) => { setCurVal(v); setView(forceReport||v.status==="done"?"report":"form"); };
   const convertFormat = (newTemplate) => {
@@ -1708,7 +1710,7 @@ export default function App() {
     const bank = selBank||banks.find(b=>b.id===curVal.bankId);
     return (<>
       {showGoogleSetup && <GoogleSetupModal onClose={()=>setShowGoogleSetup(false)} onConnect={connectGoogle}/>}
-      <Report val={curVal} bank={bank} onEdit={()=>setView("form")} onBack={()=>{setSelBank(bank);setView("bank");}} onConvertFormat={convertFormat} googleToken={googleToken} googleEmail={googleEmail} googleFolderId={googleFolderId} onRequestGoogleAuth={requestGoogleAuth}/>
+      <Report val={curVal} bank={bank} onEdit={()=>setView("form")} onBack={()=>{setSelBank(bank);setView("bank");}} onConvertFormat={convertFormat} googleToken={googleToken} googleEmail={googleEmail} googleFolderId={googleFolderId} onRequestGoogleAuth={requestGoogleAuth} onSaveVal={v=>saveVal(v,true)}/>
     </>);
   }
   if (view==="form"&&curVal) {
