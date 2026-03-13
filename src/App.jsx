@@ -1183,8 +1183,12 @@ function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, goog
     setShowSigModal(false);
   };
 
-  const uploadToDrive = async () => {
-    if (!googleToken) { onRequestGoogleAuth(); return; }
+  const uploadToDrive = async (tokenOverride) => {
+    const token = tokenOverride || googleToken;
+    if (!token) { 
+      onRequestGoogleAuth((t) => uploadToDrive(t));
+      return; 
+    }
     if (!sig) { alert("Please apply your signature before uploading."); return; }
     setDriveStatus("uploading");
     try {
@@ -1195,7 +1199,7 @@ function Report({val:v, bank, onEdit, onBack, onConvertFormat, googleToken, goog
       const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: text/html\r\n\r\n${html}\r\n--${boundary}--`;
       const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
         method: "POST",
-        headers: { "Authorization": "Bearer " + googleToken, "Content-Type": `multipart/related; boundary=${boundary}` },
+        headers: { "Authorization": "Bearer " + token, "Content-Type": `multipart/related; boundary=${boundary}` },
         body
       });
       const data = await res.json();
@@ -1643,9 +1647,11 @@ export default function App() {
   const [bankModal, setBankModal] = useState(null);
   const [googleEmail, setGoogleEmail] = useState(null);
   const [googleToken, setGoogleToken] = useState(null);
+  const googleTokenRef = useRef(null);
   const [googleFolderId, setGoogleFolderId] = useState(GOOGLE_FOLDER_ID);
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
   const googleClientRef = useRef(null);
+  const pendingUploadRef = useRef(null);
 
   const saveBank = (b) => { setBanks(bs => bs.some(x=>x.id===b.id) ? bs.map(x=>x.id===b.id?b:x) : [...bs,b]); setBankModal(null); };
   const delBank  = (id) => { if(!confirm("Delete this bank and all its valuations?")) return; setBanks(bs=>bs.filter(b=>b.id!==id)); setValuations(vs=>vs.filter(v=>v.bankId!==id)); };
@@ -1667,15 +1673,16 @@ export default function App() {
     document.head.appendChild(s);
   });
 
-  const connectGoogle = async (clientId, folderId) => {
+  const connectGoogle = async (clientId, folderId, onTokenReady) => {
     if (!clientId.trim()) return;
-    if (folderId) { setGoogleFolderId(folderId); try { localStorage.setItem("kpsb_drive_folder", folderId); } catch {} }
+    if (folderId) { setGoogleFolderId(folderId); }
     await loadGSI();
     googleClientRef.current = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId.trim(),
       scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email",
       callback: async (tkn) => {
         if (tkn.access_token) {
+          googleTokenRef.current = tkn.access_token;
           setGoogleToken(tkn.access_token);
           try {
             const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", { headers:{ Authorization:"Bearer "+tkn.access_token } });
@@ -1683,15 +1690,17 @@ export default function App() {
             setGoogleEmail(info.email||"Google Account");
           } catch { setGoogleEmail("Google Account"); }
           setShowGoogleSetup(false);
+          if (onTokenReady) onTokenReady(tkn.access_token);
+          if (pendingUploadRef.current) { pendingUploadRef.current(tkn.access_token); pendingUploadRef.current = null; }
         }
       }
     });
     googleClientRef.current.requestAccessToken({ prompt: "select_account" });
   };
 
-  const requestGoogleAuth = () => {
-    googleClientRef.current = null;
-    connectGoogle(GOOGLE_CLIENT_ID, GOOGLE_FOLDER_ID);
+  const requestGoogleAuth = (onTokenReady) => {
+    if (googleTokenRef.current) { onTokenReady && onTokenReady(googleTokenRef.current); return; }
+    connectGoogle(GOOGLE_CLIENT_ID, GOOGLE_FOLDER_ID, onTokenReady);
   };
 
   if (view==="report"&&curVal) {
