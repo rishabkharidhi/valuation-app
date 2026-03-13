@@ -1676,7 +1676,6 @@ export default function App() {
     googleClientRef.current = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId.trim(),
       scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email",
-      prompt: "select_account",
       callback: async (tkn) => {
         if (tkn.access_token) {
           setGoogleToken(tkn.access_token);
@@ -1689,11 +1688,11 @@ export default function App() {
         }
       }
     });
-    googleClientRef.current.requestAccessToken();
+    googleClientRef.current.requestAccessToken({ prompt: "select_account" });
   };
 
   const requestGoogleAuth = () => {
-    if (googleClientRef.current) googleClientRef.current.requestAccessToken();
+    if (googleClientRef.current) googleClientRef.current.requestAccessToken({ prompt: "select_account" });
     else setShowGoogleSetup(true);
   };
 
