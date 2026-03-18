@@ -4,6 +4,9 @@ import { useState, useRef, useEffect } from "react";
 const GOOGLE_CLIENT_ID = "484328350633-87dqplme1r4vmodmpufrou98h1t8e6g6.apps.googleusercontent.com";
 const GOOGLE_FOLDER_ID = "1SvxbgQqujL9kO2w3QXZpNUFCazyWvu43";
 
+// ── Admin password — change this to something only you know ───────────────────
+const ADMIN_PASSWORD = "KPSB@2024";
+
 // Module-level Google session — survives all React re-renders
 const gSession = { token: null, email: null, client: null };
 
@@ -37,13 +40,14 @@ const BANK_COLORS = ["#1f4e79","#7b1c1c","#1a5c38","#4a2070","#7a4a10","#1c4a5c"
 const STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi"];
 
 const TEMPLATES = [
-  { id:"sectional", label:"Sectional", sub:"IndusInd style" },
-  { id:"tabular",   label:"Numbered Tabular", sub:"Federal Bank style" },
-  { id:"hinduja",   label:"Technical Scrutiny", sub:"Hinduja Leyland style" },
-  { id:"incred",    label:"Technical Appraisal", sub:"Incred Financial style" },
-  { id:"religare",  label:"Land & Building Analysis", sub:"Religare Finvest style" },
-  { id:"orix",      label:"Letter-Section Table", sub:"Orix Finance style" },
-  { id:"arka",      label:"A–J Sections", sub:"Arka Fincap style" },
+  { id:"sectional",  label:"Sectional",              sub:"IndusInd style" },
+  { id:"tabular",    label:"Numbered Tabular",        sub:"Federal Bank style" },
+  { id:"hinduja",    label:"Technical Scrutiny",      sub:"Hinduja Leyland style" },
+  { id:"incred",     label:"Technical Appraisal",     sub:"Incred Financial style" },
+  { id:"religare",   label:"Land & Building Analysis",sub:"Religare Finvest style" },
+  { id:"orix",       label:"Letter-Section Table",    sub:"Orix Finance style" },
+  { id:"arka",       label:"A–J Sections",            sub:"Arka Fincap style" },
+  { id:"sitevisit",  label:"Site Visit Report",       sub:"Multi-bank field inspection" },
 ];
 
 const suggestDep = (age, type) => {
@@ -198,7 +202,7 @@ const CSS = `
   .form-sec-hdr{background:var(--blue);color:white;padding:12px 20px;font-family:'Playfair Display',serif;font-size:14px;display:flex;align-items:center;gap:8px;}
   .form-body{padding:18px 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:13px;}
   .form-body.c2{grid-template-columns:repeat(2,1fr);}.form-body.c1{grid-template-columns:1fr;}
-  .form-body.c4{grid-template-columns:repeat(4,1fr);}
+  .form-body.c3{grid-template-columns:repeat(3,1fr);}.form-body.c4{grid-template-columns:repeat(4,1fr);}
   .s2{grid-column:span 2;}.s3{grid-column:span 3;}.s4{grid-column:span 4;}
   .field{display:flex;flex-direction:column;gap:4px;}
   .field label{font-size:10px;font-weight:700;color:var(--ink2);letter-spacing:.3px;text-transform:uppercase;}
@@ -1110,6 +1114,150 @@ function ArkaReport({v, bank, col, sig, sigFont, sigColor}) {
 }
 
 // ── Report Dispatcher ──────────────────────────────────────────────────────────
+function SiteVisitReport({v, bank, col, sig, sigFont, sigColor}) {
+  const floors = ["BF","GF","FF","SF","TF","4th","5th"];
+  const Row = ({label, value, width="50%"}) => (
+    <tr><td style={{padding:"4px 8px",fontWeight:600,fontSize:11,background:"#f8f8f8",border:"1px solid #ccc",width}}>{label}</td>
+        <td style={{padding:"4px 8px",fontSize:11,border:"1px solid #ccc"}}>{value||""}</td></tr>
+  );
+  const Cell = ({label, value, w="25%"}) => (
+    <><td style={{padding:"4px 8px",fontWeight:600,fontSize:11,background:"#f8f8f8",border:"1px solid #ccc",width:w}}>{label}</td>
+      <td style={{padding:"4px 8px",fontSize:11,border:"1px solid #ccc"}}>{value||""}</td></>
+  );
+  const yn = (val) => val ? (val==="yes"?"YES":"NO") : "___";
+  return (
+    <div style={{fontFamily:"'DM Sans',sans-serif",padding:"18px 24px",maxWidth:900,margin:"0 auto",fontSize:12}}>
+      {/* Header */}
+      <div style={{border:"2px solid #1f4e79",borderRadius:8,padding:"10px 16px",marginBottom:12,background:"#f0f4fa"}}>
+        <div style={{textAlign:"center",fontWeight:700,fontSize:15,color:"#1f4e79",letterSpacing:1,marginBottom:6}}>SITE VISIT REPORT</div>
+        <div style={{fontSize:10,color:"#444",textAlign:"center",marginBottom:8,lineHeight:1.8}}>
+          AXIS &nbsp;|&nbsp; INDUS IND &nbsp;|&nbsp; HINDUJA &nbsp;|&nbsp; SBFC &nbsp;|&nbsp; FED &nbsp;|&nbsp; INCRED &nbsp;|&nbsp; ARKA FIN CAP &nbsp;|&nbsp; ANADRATHI &nbsp;|&nbsp; JANALASHMI &nbsp;|&nbsp; ORIX &nbsp;|&nbsp; RELIGARE &nbsp;|&nbsp; YES &nbsp;|&nbsp; CLIX CAPITAL &nbsp;|&nbsp; UGRO &nbsp;|&nbsp; DCB &nbsp;|&nbsp; RBL
+        </div>
+        <table style={{width:"100%",borderCollapse:"collapse"}}><tbody>
+          <tr>
+            <Cell label="Property Visited By" value={v.engineerName||"K P Satish Babu"} w="25%"/>
+            <Cell label="Date" value={v.reportDate||""} w="25%"/>
+          </tr>
+        </tbody></table>
+      </div>
+
+      {/* Customer & Location */}
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:8}}><tbody>
+        <Row label="Customer Name" value={v.ownerName}/>
+        <Row label="Address" value={v.propertyAddress}/>
+        <Row label="Land Mark" value={v.landmark}/>
+      </tbody></table>
+
+      {/* Schedule / Boundaries */}
+      <div style={{fontWeight:700,fontSize:11,background:col,color:"white",padding:"4px 8px",marginBottom:4}}>SCHEDULE &amp; SITE DEMARCATION</div>
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:8}}><tbody>
+        <tr>
+          <Cell label="East"  value={v.boundaryEast}  w="12%"/>
+          <Cell label="West"  value={v.boundaryWest}  w="12%"/>
+          <Cell label="North" value={v.boundaryNorth} w="12%"/>
+          <Cell label="South" value={v.boundarySouth} w="12%"/>
+        </tr>
+        <tr>
+          <Cell label="Site Demarcation Boundaries Mentioned" value={yn(v.demarcationMentioned)} w="35%"/>
+          <Cell label="Compound Wall" value={yn(v.compoundWall)} w="15%"/>
+          <Cell label="Site Number Mentioned" value={yn(v.siteNumberMentioned)} w="25%"/>
+        </tr>
+        <tr>
+          <Cell label="Set Back Front" value={v.setbackFront} w="12%"/>
+          <Cell label="Rear"           value={v.setbackRear}  w="12%"/>
+          <Cell label="Left"           value={v.setbackLeft}  w="12%"/>
+          <Cell label="Right"          value={v.setbackRight} w="12%"/>
+        </tr>
+        <tr>
+          <Cell label="Geo Tag Latitude"  value={v.geoLat} w="25%"/>
+          <Cell label="Longitude"         value={v.geoLng} w="25%"/>
+          <Cell label="Occupation Status" value={v.occupationStatus} w="25%"/>
+          <Cell label="CDP Zone"          value={v.cdpZone} w="25%"/>
+        </tr>
+        <tr>
+          <Cell label="Age of Property"        value={v.constructionAge ? v.constructionAge+" yrs" : ""} w="25%"/>
+          <Cell label="Distance from City Center" value={v.distanceCity} w="25%"/>
+          <Cell label="Kitchen Platform &amp; Sink" value={v.kitchenPlatform} w="25%"/>
+          <Cell label="Flooring"              value={v.flooringType} w="25%"/>
+        </tr>
+        <tr>
+          <Cell label="Door / Windows" value={v.doorWindowType} w="25%"/>
+          <Cell label="Occupancy Level in Area" value={v.occupancyLevel} w="25%"/>
+          <Cell label="Classification of Area" value={v.areaClassification} w="25%"/>
+          <Cell label="Approved By" value={v.approvedBy} w="25%"/>
+        </tr>
+      </tbody></table>
+
+      {/* Floor table */}
+      <div style={{fontWeight:700,fontSize:11,background:col,color:"white",padding:"4px 8px",marginBottom:4}}>FLOOR-WISE AREA &amp; RATE</div>
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:8}}>
+        <thead><tr style={{background:"#f0f4fa"}}>
+          <th style={{padding:"5px 8px",border:"1px solid #ccc",fontSize:11,width:"10%"}}>Floor</th>
+          <th style={{padding:"5px 8px",border:"1px solid #ccc",fontSize:11}}>Built-up Area</th>
+          <th style={{padding:"5px 8px",border:"1px solid #ccc",fontSize:11}}>Residential Rate</th>
+          <th style={{padding:"5px 8px",border:"1px solid #ccc",fontSize:11}}>Commercial Rate</th>
+          <th style={{padding:"5px 8px",border:"1px solid #ccc",fontSize:11}}>Flat Carpet Area</th>
+        </tr></thead>
+        <tbody>
+          {floors.map(fl => {
+            const fk = fl.toLowerCase().replace(/\s/g,"");
+            const fa = v.floors?.find(f=>f.floor===fl)||{};
+            return (
+              <tr key={fl}>
+                <td style={{padding:"4px 8px",fontWeight:600,fontSize:11,background:"#f8f8f8",border:"1px solid #ccc",textAlign:"center"}}>{fl}</td>
+                <td style={{padding:"4px 8px",fontSize:11,border:"1px solid #ccc"}}>{fa.builtUpArea||""}</td>
+                <td style={{padding:"4px 8px",fontSize:11,border:"1px solid #ccc"}}>{fa.residentialRate||""}</td>
+                <td style={{padding:"4px 8px",fontSize:11,border:"1px solid #ccc"}}>{fa.commercialRate||""}</td>
+                <td style={{padding:"4px 8px",fontSize:11,border:"1px solid #ccc"}}>{fa.carpetArea||""}</td>
+              </tr>
+            );
+          })}
+          <tr>
+            <td colSpan={1} style={{padding:"4px 8px",fontWeight:700,fontSize:11,background:"#f0f4fa",border:"1px solid #ccc"}}>Site Area Rate</td>
+            <td colSpan={4} style={{padding:"4px 8px",fontSize:11,border:"1px solid #ccc"}}>{v.landRate ? `Rs.${fmt(v.landRate)} per sqft` : ""}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Amenities */}
+      <div style={{fontWeight:700,fontSize:11,background:col,color:"white",padding:"4px 8px",marginBottom:4}}>AMENITIES</div>
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:8}}><tbody>
+        <Row label="Amenities Present" value={[v.hasCompoundWall&&"Compound Wall",v.hasElevation&&"Elevation",v.hasOHTank&&"OH Tank",v.hasBoreWell&&"Bore Well",v.hasSump&&"Sump",v.hasSolar&&"Solar",v.hasLift&&"Lift"].filter(Boolean).join(", ")||v.amenities}/>
+        <tr>
+          <Cell label="Ward Robes" value={v.wardRobes} w="25%"/>
+          <Cell label="Amenities Rate" value={v.amenitiesRate} w="25%"/>
+          <Cell label="Approved By" value={v.approvedBy} w="50%"/>
+        </tr>
+      </tbody></table>
+
+      {/* Hazards */}
+      <div style={{fontWeight:700,fontSize:11,background:col,color:"white",padding:"4px 8px",marginBottom:4}}>HAZARDS &amp; OBSERVATIONS</div>
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:8}}><tbody>
+        <tr>
+          <Cell label="HT Wire"     value={yn(v.htWire)}     w="16%"/>
+          <Cell label="Slum"        value={yn(v.nearSlum)}   w="16%"/>
+          <Cell label="Grave Yard"  value={yn(v.graveYard)}  w="17%"/>
+          <Cell label="Drainage/Lake" value={yn(v.drainage)} w="17%"/>
+          <Cell label="Litigation"  value={yn(v.litigation)} w="17%"/>
+          <Cell label="Raja Kaluve" value={yn(v.rajaKaluve)} w="17%"/>
+        </tr>
+      </tbody></table>
+
+      {/* Remarks */}
+      <div style={{fontWeight:700,fontSize:11,background:col,color:"white",padding:"4px 8px",marginBottom:4}}>REMARKS</div>
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:8}}><tbody>
+        <Row label="1. Approach Road" value={v.approachRoad}/>
+        <Row label="2. Road Widening Mentioned" value={v.roadWidening ? yn(v.roadWidening)+(v.roadWideningDetail?" – "+v.roadWideningDetail:"") : ""}/>
+        <Row label="3. Property Identified Through" value={v.propertyIdentified}/>
+        <Row label="Additional Remarks" value={v.remarks}/>
+      </tbody></table>
+
+      {/* Signature */}
+      <RptSigBlock v={v} sig={sig} sigFont={sigFont} sigColor={sigColor} col={col}/>
+    </div>
+  );
+}
+
 function ReportBody({v, bank, col, sig, sigFont, sigColor}) {
   const t = bank?.reportTemplate||"sectional";
   const p = {v, bank, col, sig, sigFont, sigColor};
@@ -1118,7 +1266,8 @@ function ReportBody({v, bank, col, sig, sigFont, sigColor}) {
   if (t==="incred")   return <IncredReport   {...p}/>;
   if (t==="religare") return <ReligareReport {...p}/>;
   if (t==="orix")     return <OrixReport     {...p}/>;
-  if (t==="arka")     return <ArkaReport     {...p}/>;
+  if (t==="arka")      return <ArkaReport     {...p}/>;
+  if (t==="sitevisit") return <SiteVisitReport {...p}/>;
   return <SectionalReport {...p}/>;
 }
 
@@ -1476,6 +1625,38 @@ function ValForm({valuation:init, bank, onSave, onCancel, onAutosave}) {
               </div>
             </div>
           </div>
+          <div className="form-card">
+            <div className="form-sec-hdr">Site Visit Fields (Multi-bank checklist)</div>
+            <div className="form-body c2">
+              <F label="Geo Tag Latitude"><input value={v.geoLat} onChange={e=>upd("geoLat",e.target.value)} placeholder="e.g. 12.9716"/></F>
+              <F label="Geo Tag Longitude"><input value={v.geoLng} onChange={e=>upd("geoLng",e.target.value)} placeholder="e.g. 77.5946"/></F>
+              <F label="CDP Zone"><input value={v.cdpZone} onChange={e=>upd("cdpZone",e.target.value)} placeholder="Residential / Commercial..."/></F>
+              <F label="Distance from City Center"><input value={v.distanceCity} onChange={e=>upd("distanceCity",e.target.value)} placeholder="e.g. 5 km"/></F>
+              <F label="Kitchen Platform &amp; Sink"><input value={v.kitchenPlatform} onChange={e=>upd("kitchenPlatform",e.target.value)} placeholder="Granite / Marble / Tiles"/></F>
+              <F label="Flooring Type"><input value={v.flooringType} onChange={e=>upd("flooringType",e.target.value)} placeholder="Vitrified / Marble / Mosaic"/></F>
+              <F label="Door / Window Type"><Sel value={v.doorWindowType} onChange={e=>upd("doorWindowType",e.target.value)} options={["","Teak","Ordinary","Aluminum","UPVC"]}/></F>
+              <F label="Occupancy Level in Area"><Sel value={v.occupancyLevel} onChange={e=>upd("occupancyLevel",e.target.value)} options={["","Low","Medium","High"]}/></F>
+              <F label="Classification of Area"><Sel value={v.areaClassification} onChange={e=>upd("areaClassification",e.target.value)} options={["","Low","Middle","High"]}/></F>
+              <F label="Approved By"><Sel value={v.approvedBy} onChange={e=>upd("approvedBy",e.target.value)} options={["","BBMP","CMC","Grampanchayat","BDA","BMRDA","BIAPPA","TMC"]}/></F>
+              <F label="Site Number Mentioned"><Sel value={v.siteNumberMentioned} onChange={e=>upd("siteNumberMentioned",e.target.value)} options={["","yes","no"]}/></F>
+              <F label="Demarcation Boundaries Mentioned"><Sel value={v.demarcationMentioned} onChange={e=>upd("demarcationMentioned",e.target.value)} options={["","yes","no"]}/></F>
+              <F label="Ward Robes"><input value={v.wardRobes} onChange={e=>upd("wardRobes",e.target.value)} placeholder="Yes / No / Count"/></F>
+              <F label="Amenities Rate (Rs.)"><input type="number" value={v.amenitiesRate} onChange={e=>upd("amenitiesRate",e.target.value)}/></F>
+            </div>
+            <div className="form-body c3" style={{paddingTop:0}}>
+              <F label="HT Wire Nearby"><Sel value={v.htWire} onChange={e=>upd("htWire",e.target.value)} options={["","yes","no"]}/></F>
+              <F label="Slum Nearby"><Sel value={v.nearSlum} onChange={e=>upd("nearSlum",e.target.value)} options={["","yes","no"]}/></F>
+              <F label="Grave Yard Nearby"><Sel value={v.graveYard} onChange={e=>upd("graveYard",e.target.value)} options={["","yes","no"]}/></F>
+              <F label="Drainage / Lake"><Sel value={v.drainage} onChange={e=>upd("drainage",e.target.value)} options={["","yes","no"]}/></F>
+              <F label="Litigation"><Sel value={v.litigation} onChange={e=>upd("litigation",e.target.value)} options={["","yes","no"]}/></F>
+              <F label="Raja Kaluve"><Sel value={v.rajaKaluve} onChange={e=>upd("rajaKaluve",e.target.value)} options={["","yes","no"]}/></F>
+            </div>
+            <div className="form-body c1" style={{paddingTop:0}}>
+              <F label="Approach Road"><input value={v.approachRoad} onChange={e=>upd("approachRoad",e.target.value)} placeholder="Mud Road / Tar Road / Concrete Road and width"/></F>
+              <F label="Road Widening Mentioned"><Sel value={v.roadWidening} onChange={e=>upd("roadWidening",e.target.value)} options={["","yes","no"]}/></F>
+              <F label="Property Identified Through"><input value={v.propertyIdentified} onChange={e=>upd("propertyIdentified",e.target.value)} placeholder="Name Board / Neighbour's Enquiry / Owner's Direction"/></F>
+            </div>
+          </div>
         </>)}
 
         {step===3 && (<>
@@ -1671,9 +1852,236 @@ function GoogleSetupModal({onClose, onConnect}) {
   );
 }
 
+// ─── Landing Screen (public) ──────────────────────────────────────────────────
+function LandingScreen({onAdmin, onVisit}) {
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState("");
+  const login = () => {
+    if (pw === ADMIN_PASSWORD) { onAdmin(); }
+    else { setErr("Incorrect password."); setPw(""); }
+  };
+  return (
+    <div style={{minHeight:"100vh",background:"var(--cream)",display:"flex",alignItems:"center",justifyContent:"center",padding:20,flexDirection:"column",gap:24}}>
+      <style>{CSS}</style>
+      <div style={{textAlign:"center",marginBottom:4}}>
+        <div style={{width:60,height:60,background:"var(--blue)",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,margin:"0 auto 14px"}}>📐</div>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"var(--blue)",fontWeight:700}}>K P Satish Babu</div>
+        <div style={{fontSize:13,color:"var(--ink2)",marginTop:4}}>Site Valuation &amp; Field Visit System</div>
+      </div>
+
+      {/* Field engineer card */}
+      <div style={{background:"white",borderRadius:16,padding:"24px 28px",maxWidth:400,width:"100%",boxShadow:"var(--shadow-lg)",textAlign:"center"}}>
+        <div style={{fontSize:32,marginBottom:10}}>🏗️</div>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:16,color:"var(--blue)",marginBottom:6}}>Field Engineer</div>
+        <div style={{fontSize:12,color:"var(--ink2)",marginBottom:16,lineHeight:1.7}}>Submit a property site visit report. No login required.</div>
+        <button className="btn btn-gold btn-lg" style={{width:"100%",justifyContent:"center"}} onClick={onVisit}>
+          📋 Submit Field Visit Report
+        </button>
+      </div>
+
+      {/* Admin card */}
+      <div style={{background:"white",borderRadius:16,padding:"24px 28px",maxWidth:400,width:"100%",boxShadow:"var(--shadow-lg)"}}>
+        <div style={{textAlign:"center",marginBottom:16}}>
+          <div style={{fontSize:28,marginBottom:6}}>🔐</div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:16,color:"var(--blue)"}}>Admin Login</div>
+        </div>
+        {err && <div style={{background:"#fff0f0",border:"1px solid #f5c2c7",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#dc3545",marginBottom:12}}>{err}</div>}
+        <div className="field" style={{marginBottom:14}}>
+          <label>Password</label>
+          <input type="password" value={pw} onChange={e=>{setPw(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="Enter admin password" autoFocus/>
+        </div>
+        <button className="btn btn-gold btn-lg" style={{width:"100%",justifyContent:"center"}} onClick={login}>
+          Sign In
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Public Site Visit Submission Form ────────────────────────────────────────
+function PublicVisitForm({onBack}) {
+  const [v, setV] = useState({id:uid(), submittedAt:new Date().toISOString(), engineerName:"", visitDate:today(),
+    ownerName:"", propertyAddress:"", landmark:"",
+    boundaryEast:"", boundaryWest:"", boundaryNorth:"", boundarySouth:"",
+    demarcationMentioned:"", compoundWall:"", siteNumberMentioned:"",
+    setbackFront:"", setbackRear:"", setbackLeft:"", setbackRight:"",
+    geoLat:"", geoLng:"", occupationStatus:"", cdpZone:"",
+    constructionAge:"", distanceCity:"", kitchenPlatform:"", flooringType:"",
+    doorWindowType:"", occupancyLevel:"", areaClassification:"", approvedBy:"",
+    landRate:"", amenitiesRate:"", wardRobes:"",
+    htWire:"", nearSlum:"", graveYard:"", drainage:"", litigation:"", rajaKaluve:"",
+    approachRoad:"", roadWidening:"", propertyIdentified:"", remarks:"",
+    floors: [{floor:"BF"},{floor:"GF"},{floor:"FF"},{floor:"SF"},{floor:"TF"},{floor:"4th"},{floor:"5th"}]
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const upd = (k,val) => setV(c=>({...c,[k]:val}));
+  const updFloor = (i,k,val) => setV(c=>({...c, floors:c.floors.map((f,fi)=>fi===i?{...f,[k]:val}:f)}));
+  const Sel = ({value, onChange, options}) => <select value={value||""} onChange={onChange}>{options.map(o=><option key={o} value={o}>{o||"—"}</option>)}</select>;
+  const F = ({label, children, span}) => <div className="field" style={span?{gridColumn:"span "+span}:{}}><label>{label}</label>{children}</div>;
+
+  const submit = () => {
+    if (!v.engineerName || !v.propertyAddress) { alert("Please fill in Engineer Name and Property Address at minimum."); return; }
+    try {
+      const visits = JSON.parse(localStorage.getItem("kpsb_visits")||"[]");
+      visits.push({...v, submittedAt: new Date().toISOString()});
+      localStorage.setItem("kpsb_visits", JSON.stringify(visits));
+    } catch {}
+    setSubmitted(true);
+  };
+
+  if (submitted) return (
+    <div style={{minHeight:"100vh",background:"var(--cream)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <style>{CSS}</style>
+      <div style={{background:"white",borderRadius:20,padding:"40px 36px",maxWidth:420,width:"100%",boxShadow:"var(--shadow-lg)",textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:12}}>✅</div>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:"var(--blue)",marginBottom:8}}>Report Submitted</div>
+        <div style={{fontSize:13,color:"var(--ink2)",marginBottom:24,lineHeight:1.7}}>Your site visit report for <strong>{v.ownerName||v.propertyAddress}</strong> has been submitted successfully.</div>
+        <button className="btn btn-gold btn-lg" style={{width:"100%",justifyContent:"center"}} onClick={onBack}>← Back to Home</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="app">
+      <style>{CSS}</style>
+      <Header><GBtn onClick={onBack}>← Back</GBtn></Header>
+      <div className="page">
+        <div className="page-header">
+          <div>
+            <div className="page-title">Field Site Visit Report</div>
+            <div className="page-sub">Fill in all available details from your site visit</div>
+          </div>
+          <button className="btn btn-gold btn-lg" onClick={submit}>✅ Submit Report</button>
+        </div>
+
+        <div className="form-card">
+          <div className="form-sec-hdr">Engineer &amp; Property Details</div>
+          <div className="form-body c2">
+            <F label="Engineer Name"><input value={v.engineerName} onChange={e=>upd("engineerName",e.target.value)} placeholder="Your name"/></F>
+            <F label="Visit Date"><input type="date" value={v.visitDate} onChange={e=>upd("visitDate",e.target.value)}/></F>
+            <F label="Customer Name"><input value={v.ownerName} onChange={e=>upd("ownerName",e.target.value)}/></F>
+            <F label="Property Address" span="1"><input value={v.propertyAddress} onChange={e=>upd("propertyAddress",e.target.value)}/></F>
+            <F label="Land Mark" span="2"><input value={v.landmark} onChange={e=>upd("landmark",e.target.value)}/></F>
+          </div>
+        </div>
+
+        <div className="form-card">
+          <div className="form-sec-hdr">Schedule &amp; Boundaries</div>
+          <div className="form-body c2">
+            <F label="East Boundary"><input value={v.boundaryEast} onChange={e=>upd("boundaryEast",e.target.value)}/></F>
+            <F label="West Boundary"><input value={v.boundaryWest} onChange={e=>upd("boundaryWest",e.target.value)}/></F>
+            <F label="North Boundary"><input value={v.boundaryNorth} onChange={e=>upd("boundaryNorth",e.target.value)}/></F>
+            <F label="South Boundary"><input value={v.boundarySouth} onChange={e=>upd("boundarySouth",e.target.value)}/></F>
+            <F label="Demarcation Boundaries Mentioned"><Sel value={v.demarcationMentioned} onChange={e=>upd("demarcationMentioned",e.target.value)} options={["","Yes","No"]}/></F>
+            <F label="Compound Wall"><Sel value={v.compoundWall} onChange={e=>upd("compoundWall",e.target.value)} options={["","Yes","No"]}/></F>
+            <F label="Site Number Mentioned"><Sel value={v.siteNumberMentioned} onChange={e=>upd("siteNumberMentioned",e.target.value)} options={["","Yes","No"]}/></F>
+          </div>
+        </div>
+
+        <div className="form-card">
+          <div className="form-sec-hdr">Set Backs &amp; Location</div>
+          <div className="form-body c2">
+            <F label="Set Back Front (ft)"><input type="number" value={v.setbackFront} onChange={e=>upd("setbackFront",e.target.value)}/></F>
+            <F label="Set Back Rear (ft)"><input type="number" value={v.setbackRear} onChange={e=>upd("setbackRear",e.target.value)}/></F>
+            <F label="Set Back Left (ft)"><input type="number" value={v.setbackLeft} onChange={e=>upd("setbackLeft",e.target.value)}/></F>
+            <F label="Set Back Right (ft)"><input type="number" value={v.setbackRight} onChange={e=>upd("setbackRight",e.target.value)}/></F>
+            <F label="Geo Tag Latitude"><input value={v.geoLat} onChange={e=>upd("geoLat",e.target.value)} placeholder="e.g. 12.9716"/></F>
+            <F label="Geo Tag Longitude"><input value={v.geoLng} onChange={e=>upd("geoLng",e.target.value)} placeholder="e.g. 77.5946"/></F>
+            <F label="Occupation Status"><input value={v.occupationStatus} onChange={e=>upd("occupationStatus",e.target.value)} placeholder="Owner / Tenant / Vacant"/></F>
+            <F label="CDP Zone"><input value={v.cdpZone} onChange={e=>upd("cdpZone",e.target.value)} placeholder="Residential / Commercial"/></F>
+            <F label="Age of Property (yrs)"><input type="number" value={v.constructionAge} onChange={e=>upd("constructionAge",e.target.value)}/></F>
+            <F label="Distance from City Center"><input value={v.distanceCity} onChange={e=>upd("distanceCity",e.target.value)} placeholder="e.g. 5 km"/></F>
+          </div>
+        </div>
+
+        <div className="form-card">
+          <div className="form-sec-hdr">Interior &amp; Classification</div>
+          <div className="form-body c2">
+            <F label="Kitchen Platform &amp; Sink"><input value={v.kitchenPlatform} onChange={e=>upd("kitchenPlatform",e.target.value)} placeholder="Granite / Marble / Tiles"/></F>
+            <F label="Flooring"><input value={v.flooringType} onChange={e=>upd("flooringType",e.target.value)} placeholder="Vitrified / Marble / Mosaic"/></F>
+            <F label="Door / Windows"><Sel value={v.doorWindowType} onChange={e=>upd("doorWindowType",e.target.value)} options={["","Teak","Ordinary","Aluminum","UPVC"]}/></F>
+            <F label="Occupancy Level in Area"><Sel value={v.occupancyLevel} onChange={e=>upd("occupancyLevel",e.target.value)} options={["","Low","Medium","High"]}/></F>
+            <F label="Classification of Area"><Sel value={v.areaClassification} onChange={e=>upd("areaClassification",e.target.value)} options={["","Low","Middle","High"]}/></F>
+            <F label="Approved By"><Sel value={v.approvedBy} onChange={e=>upd("approvedBy",e.target.value)} options={["","BBMP","CMC","Grampanchayat","BDA","BMRDA","BIAPPA","TMC"]}/></F>
+            <F label="Ward Robes"><input value={v.wardRobes} onChange={e=>upd("wardRobes",e.target.value)} placeholder="Yes / No / Count"/></F>
+            <F label="Amenities Rate (Rs.)"><input type="number" value={v.amenitiesRate} onChange={e=>upd("amenitiesRate",e.target.value)}/></F>
+          </div>
+        </div>
+
+        <div className="form-card">
+          <div className="form-sec-hdr">Floor-wise Area &amp; Rates</div>
+          <div style={{overflowX:"auto",padding:"0 20px 16px"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr style={{background:"var(--paper)"}}>
+                {["Floor","Built-up Area (sft)","Residential Rate (Rs.)","Commercial Rate (Rs.)","Flat Carpet Area (sft)"].map(h=>(
+                  <th key={h} style={{padding:"8px 10px",border:"1px solid var(--border)",textAlign:"left",fontWeight:600,color:"var(--ink2)",fontSize:11}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>{v.floors.map((fl,i)=>(
+                <tr key={fl.floor}>
+                  <td style={{padding:"6px 10px",border:"1px solid var(--border)",fontWeight:600,background:"var(--paper)"}}>{fl.floor}</td>
+                  <td style={{padding:"4px 6px",border:"1px solid var(--border)"}}><input type="number" value={fl.builtUpArea||""} onChange={e=>updFloor(i,"builtUpArea",e.target.value)} style={{width:"100%",border:"none",outline:"none",background:"transparent",fontSize:12}}/></td>
+                  <td style={{padding:"4px 6px",border:"1px solid var(--border)"}}><input type="number" value={fl.residentialRate||""} onChange={e=>updFloor(i,"residentialRate",e.target.value)} style={{width:"100%",border:"none",outline:"none",background:"transparent",fontSize:12}}/></td>
+                  <td style={{padding:"4px 6px",border:"1px solid var(--border)"}}><input type="number" value={fl.commercialRate||""} onChange={e=>updFloor(i,"commercialRate",e.target.value)} style={{width:"100%",border:"none",outline:"none",background:"transparent",fontSize:12}}/></td>
+                  <td style={{padding:"4px 6px",border:"1px solid var(--border)"}}><input type="number" value={fl.carpetArea||""} onChange={e=>updFloor(i,"carpetArea",e.target.value)} style={{width:"100%",border:"none",outline:"none",background:"transparent",fontSize:12}}/></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <div className="form-body c2" style={{paddingTop:0}}>
+            <F label="Site Area Rate (Rs./sft)"><input type="number" value={v.landRate} onChange={e=>upd("landRate",e.target.value)}/></F>
+          </div>
+        </div>
+
+        <div className="form-card">
+          <div className="form-sec-hdr">Hazards</div>
+          <div className="form-body c3">
+            <F label="HT Wire Nearby"><Sel value={v.htWire} onChange={e=>upd("htWire",e.target.value)} options={["","Yes","No"]}/></F>
+            <F label="Slum Nearby"><Sel value={v.nearSlum} onChange={e=>upd("nearSlum",e.target.value)} options={["","Yes","No"]}/></F>
+            <F label="Grave Yard Nearby"><Sel value={v.graveYard} onChange={e=>upd("graveYard",e.target.value)} options={["","Yes","No"]}/></F>
+            <F label="Drainage / Lake"><Sel value={v.drainage} onChange={e=>upd("drainage",e.target.value)} options={["","Yes","No"]}/></F>
+            <F label="Litigation"><Sel value={v.litigation} onChange={e=>upd("litigation",e.target.value)} options={["","Yes","No"]}/></F>
+            <F label="Raja Kaluve"><Sel value={v.rajaKaluve} onChange={e=>upd("rajaKaluve",e.target.value)} options={["","Yes","No"]}/></F>
+          </div>
+        </div>
+
+        <div className="form-card">
+          <div className="form-sec-hdr">Remarks</div>
+          <div className="form-body c1">
+            <F label="1. Approach Road"><input value={v.approachRoad} onChange={e=>upd("approachRoad",e.target.value)} placeholder="Mud Road / Tar Road / Concrete Road and width"/></F>
+            <F label="2. Road Widening Mentioned"><Sel value={v.roadWidening} onChange={e=>upd("roadWidening",e.target.value)} options={["","Yes","No"]}/></F>
+            <F label="3. Property Identified Through"><input value={v.propertyIdentified} onChange={e=>upd("propertyIdentified",e.target.value)} placeholder="Name Board / Neighbour's Enquiry / Owner's Direction"/></F>
+            <F label="Additional Remarks"><textarea value={v.remarks} onChange={e=>upd("remarks",e.target.value)} style={{minHeight:80}} placeholder="Any other observations..."/></F>
+          </div>
+        </div>
+
+        <div style={{display:"flex",justifyContent:"flex-end",padding:"0 0 32px"}}>
+          <button className="btn btn-gold btn-lg" onClick={submit}>✅ Submit Report</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const LS_BANKS = "kpsb_banks";
   const LS_VALS  = "kpsb_vals";
+
+  // ── Auth gate ────────────────────────────────────────────────────────────────
+  const [appView, setAppView] = useState(() => {
+    try { return sessionStorage.getItem("kpsb_auth")==="1" ? "admin" : "landing"; } catch { return "landing"; }
+  });
+  const loginAdmin = () => { try { sessionStorage.setItem("kpsb_auth","1"); } catch {} setAppView("admin"); };
+  const logoutAdmin = () => { try { sessionStorage.removeItem("kpsb_auth"); } catch {} setAppView("landing"); };
+
+  // Field visits (read-only for admin)
+  const [fieldVisits, setFieldVisits] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("kpsb_visits")||"[]"); } catch { return []; }
+  });
+  const refreshVisits = () => { try { setFieldVisits(JSON.parse(localStorage.getItem("kpsb_visits")||"[]")); } catch {} };
+
+  if (appView === "landing") return <LandingScreen onAdmin={loginAdmin} onVisit={()=>setAppView("visit")}/>;
+  if (appView === "visit")   return <PublicVisitForm onBack={()=>setAppView("landing")}/>;
 
   const [banks, setBanks] = useState(() => {
     try { const s = localStorage.getItem(LS_BANKS); return s ? JSON.parse(s) : DEMO_BANKS; } catch { return DEMO_BANKS; }
@@ -1779,6 +2187,7 @@ export default function App() {
               <span style={{fontSize:14}}>🔗</span> Connect Google Drive
             </button>
         }
+        <button className="btn btn-outline" style={{color:"white",borderColor:"rgba(255,255,255,.4)",fontSize:12}} onClick={logoutAdmin}>🔓 Sign Out</button>
       </Header>
       <div className="page">
         <div className="page-header">
@@ -1793,7 +2202,41 @@ export default function App() {
           <div className="stat-card"><div className="stat-num">{valuations.length}</div><div className="stat-label">Total Valuations</div></div>
           <div className="stat-card" style={{borderColor:"#c9921a"}}><div className="stat-num" style={{color:"#a87816"}}>{valuations.filter(v=>v.status==="pending").length}</div><div className="stat-label">Pending</div></div>
           <div className="stat-card" style={{borderColor:"#3d6b5a"}}><div className="stat-num" style={{color:"#3d6b5a"}}>{valuations.filter(v=>v.status==="done").length}</div><div className="stat-label">Completed</div></div>
+          <div className="stat-card" style={{borderColor:"#5b3ea8",cursor:"pointer"}} onClick={()=>{refreshVisits();setView("visits");}}>
+            <div className="stat-num" style={{color:"#5b3ea8"}}>{fieldVisits.length}</div>
+            <div className="stat-label">Field Visits</div>
+          </div>
         </div>
+        {view==="visits" && (
+          <div style={{marginBottom:24}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:13,fontWeight:700,color:"var(--ink2)",textTransform:"uppercase",letterSpacing:".5px"}}>Submitted Field Visit Reports ({fieldVisits.length})</div>
+              <button className="btn btn-outline btn-sm" onClick={()=>setView("dashboard")}>✕ Close</button>
+            </div>
+            {fieldVisits.length===0
+              ? <div style={{background:"white",borderRadius:12,padding:24,textAlign:"center",color:"var(--ink2)",fontSize:13}}>No field visits submitted yet.</div>
+              : <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {[...fieldVisits].reverse().map((fv,i)=>(
+                    <div key={i} style={{background:"white",borderRadius:12,padding:"14px 18px",boxShadow:"var(--shadow)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+                      <div>
+                        <div style={{fontWeight:700,color:"var(--blue)",fontSize:13}}>{fv.ownerName||"Unnamed"} — {fv.propertyAddress}</div>
+                        <div style={{fontSize:11,color:"var(--ink2)",marginTop:3}}>By <strong>{fv.engineerName||"Unknown"}</strong> on {fv.visitDate||fv.submittedAt?.slice(0,10)}</div>
+                      </div>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        {fv.geoLat&&fv.geoLng&&<a href={`https://maps.google.com/?q=${fv.geoLat},${fv.geoLng}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">📍 Map</a>}
+                        <button className="btn btn-sm" style={{background:"#fff0f0",color:"#dc3545",border:"1px solid #f5c2c7"}} onClick={()=>{
+                          if(!confirm("Delete this visit?")) return;
+                          const updated = fieldVisits.filter((_,fi)=>fi!==(fieldVisits.length-1-i));
+                          localStorage.setItem("kpsb_visits",JSON.stringify(updated));
+                          setFieldVisits(updated);
+                        }}>Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+            }
+          </div>
+        )}
         <div style={{fontSize:11,fontWeight:700,color:"var(--ink2)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:13}}>Banks and Clients</div>
         <div className="banks-grid">
           {banks.map(b=>{
