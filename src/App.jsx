@@ -1911,13 +1911,25 @@ function PublicVisitForm({onBack}) {
     landRate:"", amenitiesRate:"", wardRobes:"",
     htWire:"", nearSlum:"", graveYard:"", drainage:"", litigation:"", rajaKaluve:"",
     approachRoad:"", roadWidening:"", propertyIdentified:"", remarks:"",
+    photos:[],
     floors: [{floor:"BF"},{floor:"GF"},{floor:"FF"},{floor:"SF"},{floor:"TF"},{floor:"4th"},{floor:"5th"}]
   });
   const [submitted, setSubmitted] = useState(false);
+  const photoRef = useRef();
   const upd = (k,val) => setV(c=>({...c,[k]:val}));
   const updFloor = (i,k,val) => setV(c=>({...c, floors:c.floors.map((f,fi)=>fi===i?{...f,[k]:val}:f)}));
   const Sel = ({value, onChange, options}) => <select value={value||""} onChange={onChange}>{options.map(o=><option key={o} value={o}>{o||"—"}</option>)}</select>;
   const F = ({label, children, span}) => <div className="field" style={span?{gridColumn:"span "+span}:{}}><label>{label}</label>{children}</div>;
+
+  const handlePhotos = (files) => {
+    Array.from(files).forEach(file => {
+      const r = new FileReader();
+      r.onload = e => setV(c => ({...c, photos:[...(c.photos||[]), {id:uid(), url:e.target.result, caption:file.name.replace(/\.[^.]+$/,"")}]}));
+      r.readAsDataURL(file);
+    });
+  };
+  const updCaption = (id, val) => setV(c=>({...c, photos:c.photos.map(p=>p.id===id?{...p,caption:val}:p)}));
+  const removePhoto = (id) => setV(c=>({...c, photos:c.photos.filter(p=>p.id!==id)}));
 
   const submit = () => {
     if (!v.engineerName || !v.propertyAddress) { alert("Please fill in Engineer Name and Property Address at minimum."); return; }
@@ -1935,7 +1947,8 @@ function PublicVisitForm({onBack}) {
       <div style={{background:"white",borderRadius:20,padding:"40px 36px",maxWidth:420,width:"100%",boxShadow:"var(--shadow-lg)",textAlign:"center"}}>
         <div style={{fontSize:48,marginBottom:12}}>✅</div>
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:"var(--blue)",marginBottom:8}}>Report Submitted</div>
-        <div style={{fontSize:13,color:"var(--ink2)",marginBottom:24,lineHeight:1.7}}>Your site visit report for <strong>{v.ownerName||v.propertyAddress}</strong> has been submitted successfully.</div>
+        <div style={{fontSize:13,color:"var(--ink2)",marginBottom:24,lineHeight:1.7}}>Your site visit report for <strong>{v.ownerName||v.propertyAddress}</strong> has been submitted successfully{v.photos?.length>0?` with ${v.photos.length} photo${v.photos.length!==1?"s":""}`:""}.
+        </div>
         <button className="btn btn-gold btn-lg" style={{width:"100%",justifyContent:"center"}} onClick={onBack}>← Back to Home</button>
       </div>
     </div>
@@ -2055,6 +2068,34 @@ function PublicVisitForm({onBack}) {
           </div>
         </div>
 
+        <div className="form-card">
+          <div className="form-sec-hdr">Site Photographs</div>
+          <div style={{padding:"16px 20px"}}>
+            <input ref={photoRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>handlePhotos(e.target.files)}/>
+            <div style={{border:"2px dashed var(--border)",borderRadius:12,padding:"24px",textAlign:"center",cursor:"pointer",background:"var(--paper)",marginBottom:16}}
+              onClick={()=>photoRef.current.click()}
+              onDragOver={e=>e.preventDefault()}
+              onDrop={e=>{e.preventDefault();handlePhotos(e.dataTransfer.files);}}>
+              <div style={{fontSize:28,marginBottom:8}}>📸</div>
+              <div style={{fontWeight:600,color:"var(--ink2)",fontSize:13}}>Click to upload or drag and drop photos</div>
+              <div style={{fontSize:11,color:"var(--ink2)",opacity:.7,marginTop:4}}>JPG, PNG, HEIC — multiple files supported</div>
+            </div>
+            {(v.photos||[]).length > 0 && (
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12}}>
+                {v.photos.map(p=>(
+                  <div key={p.id} style={{background:"white",borderRadius:10,overflow:"hidden",boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
+                    <div style={{position:"relative"}}>
+                      <img src={p.url} alt={p.caption} style={{width:"100%",height:120,objectFit:"cover",display:"block"}}/>
+                      <button onClick={()=>removePhoto(p.id)} style={{position:"absolute",top:4,right:4,background:"rgba(220,53,69,.85)",border:"none",color:"white",borderRadius:"50%",width:22,height:22,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                    </div>
+                    <input value={p.caption} onChange={e=>updCaption(p.id,e.target.value)} placeholder="Caption..." style={{width:"100%",border:"none",borderTop:"1px solid var(--border)",padding:"6px 8px",fontSize:11,boxSizing:"border-box",outline:"none"}}/>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div style={{display:"flex",justifyContent:"flex-end",padding:"0 0 32px"}}>
           <button className="btn btn-gold btn-lg" onClick={submit}>✅ Submit Report</button>
         </div>
@@ -2071,17 +2112,14 @@ export default function App() {
   const [appView, setAppView] = useState(() => {
     try { return sessionStorage.getItem("kpsb_auth")==="1" ? "admin" : "landing"; } catch { return "landing"; }
   });
-  const loginAdmin = () => { try { sessionStorage.setItem("kpsb_auth","1"); } catch {} setAppView("admin"); };
+  const loginAdmin  = () => { try { sessionStorage.setItem("kpsb_auth","1"); } catch {} setAppView("admin"); };
   const logoutAdmin = () => { try { sessionStorage.removeItem("kpsb_auth"); } catch {} setAppView("landing"); };
 
-  // Field visits (read-only for admin)
+  // ── All state declared unconditionally (Rules of Hooks) ──────────────────────
   const [fieldVisits, setFieldVisits] = useState(() => {
     try { return JSON.parse(localStorage.getItem("kpsb_visits")||"[]"); } catch { return []; }
   });
   const refreshVisits = () => { try { setFieldVisits(JSON.parse(localStorage.getItem("kpsb_visits")||"[]")); } catch {} };
-
-  if (appView === "landing") return <LandingScreen onAdmin={loginAdmin} onVisit={()=>setAppView("visit")}/>;
-  if (appView === "visit")   return <PublicVisitForm onBack={()=>setAppView("landing")}/>;
 
   const [banks, setBanks] = useState(() => {
     try { const s = localStorage.getItem(LS_BANKS); return s ? JSON.parse(s) : DEMO_BANKS; } catch { return DEMO_BANKS; }
@@ -2089,10 +2127,6 @@ export default function App() {
   const [valuations, setValuations] = useState(() => {
     try { const s = localStorage.getItem(LS_VALS); return s ? JSON.parse(s) : []; } catch { return []; }
   });
-
-  useEffect(() => { try { localStorage.setItem(LS_BANKS, JSON.stringify(banks)); } catch {} }, [banks]);
-  useEffect(() => { try { localStorage.setItem(LS_VALS,  JSON.stringify(valuations)); } catch {} }, [valuations]);
-
   const [view, setView] = useState("dashboard");
   const [selBank, setSelBank] = useState(null);
   const [curVal, setCurVal] = useState(null);
@@ -2101,6 +2135,13 @@ export default function App() {
   const [googleToken, setGoogleToken] = useState(gSession.token);
   const [googleFolderId] = useState(GOOGLE_FOLDER_ID);
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
+
+  useEffect(() => { try { localStorage.setItem(LS_BANKS, JSON.stringify(banks)); } catch {} }, [banks]);
+  useEffect(() => { try { localStorage.setItem(LS_VALS,  JSON.stringify(valuations)); } catch {} }, [valuations]);
+
+  // ── Conditional renders AFTER all hooks ──────────────────────────────────────
+  if (appView === "landing") return <LandingScreen onAdmin={loginAdmin} onVisit={()=>setAppView("visit")}/>;
+  if (appView === "visit")   return <PublicVisitForm onBack={()=>setAppView("landing")}/>;
 
   const loadGSI = () => new Promise((res) => {
     if (window.google?.accounts?.oauth2) { res(); return; }
@@ -2157,6 +2198,7 @@ export default function App() {
     setSelBank(updated);
   };
 
+
   if (view==="report"&&curVal) {
     const bank = selBank||banks.find(b=>b.id===curVal.bankId);
     return (<>
@@ -2166,10 +2208,55 @@ export default function App() {
   }
   if (view==="form"&&curVal) {
     const bank = selBank||banks.find(b=>b.id===curVal.bankId);
-    return <ValForm valuation={curVal} bank={bank} onSave={saveVal} onCancel={()=>setView("bank")} onAutosave={v=>setValuations(vs=>vs.map(x=>x.id===v.id?v:x))}/>;  }
+    return <ValForm valuation={curVal} bank={bank} onSave={saveVal} onCancel={()=>setView(selBank?"bank":"queue")} onAutosave={v=>setValuations(vs=>vs.map(x=>x.id===v.id?v:x))}/>;
+  }
   if (view==="bank"&&selBank) {
     return <BankDetail bank={selBank} valuations={valuations} onNew={()=>{const nv=defaultVal(selBank.id);setCurVal(nv);setValuations(vs=>[...vs,nv]);setView("form");}} onOpenVal={openVal} onDeleteVal={delVal} onBack={()=>setView("dashboard")}/>;
   }
+
+  // ── convert field visit into a valuation ──────────────────────────────────  const convertVisitToValuation = (fv) => {
+    if (!banks.length) { alert("Please add a bank first before converting a visit."); return; }
+    // pre-fill valuation from visit data
+    const nv = {
+      ...defaultVal(banks[0].id),
+      ownerName: fv.ownerName||"",
+      propertyAddress: fv.propertyAddress||"",
+      nearbyLandmark: fv.landmark||"",
+      latitude: fv.geoLat||"",
+      longitude: fv.geoLng||"",
+      constructionAge: fv.constructionAge||"",
+      north: fv.boundaryNorth||"", south: fv.boundarySouth||"",
+      east: fv.boundaryEast||"", west: fv.boundaryWest||"",
+      frontSetback: fv.setbackFront||"", rearSetback: fv.setbackRear||"",
+      leftSetback: fv.setbackLeft||"", rightSetback: fv.setbackRight||"",
+      cdpZone: fv.cdpZone||"", occupancyStatus: fv.occupationStatus||"",
+      floorType: fv.flooringType||"", amenitiesDesc: fv.amenities||"",
+      landRate: fv.landRate||"",
+      photos: fv.photos||[],
+      remarks: fv.remarks||"",
+      fieldEngineerName: fv.engineerName||"",
+      reportDate: fv.visitDate||today(),
+      fromVisitId: fv.id,
+      approvedBy: fv.approvedBy||"",
+    };
+    setCurVal(nv);
+    setSelBank(banks[0]);
+    setValuations(vs=>[...vs, nv]);
+    setView("form");
+  };
+
+  const pendingVisits = fieldVisits.filter(fv => !valuations.some(v=>v.fromVisitId===fv.id));
+  const pendingVals   = valuations.filter(v => v.status==="pending"||v.status==="progress");
+  const pendingCount  = pendingVisits.length + pendingVals.length;
+
+  // ── tab nav ────────────────────────────────────────────────────────────────
+  const tabs = [
+    { id:"dashboard",  label:"🏦 Banks",          count:null },
+    { id:"queue",      label:"⏳ Pending Queue",   count:pendingCount||null },
+    { id:"valuations", label:"📋 All Valuations",  count:valuations.length||null },
+    { id:"visits",     label:"🏗️ Field Visits",   count:fieldVisits.length||null },
+  ];
+  const activeTab = ["queue","valuations","visits"].includes(view) ? view : "dashboard";
 
   return (
     <div className="app">
@@ -2189,83 +2276,256 @@ export default function App() {
         }
         <button className="btn btn-outline" style={{color:"white",borderColor:"rgba(255,255,255,.4)",fontSize:12}} onClick={logoutAdmin}>🔓 Sign Out</button>
       </Header>
+
+      {/* Tab bar */}
+      <div style={{background:"white",borderBottom:"2px solid var(--border)",padding:"0 32px",display:"flex",gap:0}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setView(t.id)}
+            style={{padding:"14px 20px",border:"none",background:"none",cursor:"pointer",fontSize:13,fontWeight:600,
+              color: activeTab===t.id ? "var(--blue)" : "var(--ink2)",
+              borderBottom: activeTab===t.id ? "3px solid var(--blue)" : "3px solid transparent",
+              display:"flex",alignItems:"center",gap:6,transition:"all .15s",marginBottom:-2}}>
+            {t.label}
+            {t.count!=null&&<span style={{background:activeTab===t.id?"var(--blue)":"var(--ink2)",color:"white",borderRadius:10,padding:"1px 7px",fontSize:10,fontWeight:700}}>{t.count}</span>}
+          </button>
+        ))}
+      </div>
+
       <div className="page">
-        <div className="page-header">
-          <div>
-            <div className="page-title">Dashboard</div>
-            <div className="page-sub">Data saved locally in your browser</div>
-          </div>
-          <button className="btn btn-gold btn-lg" onClick={()=>setBankModal("new")}>+ Add Bank / Client</button>
-        </div>
-        <div className="stats">
-          <div className="stat-card"><div className="stat-num">{banks.length}</div><div className="stat-label">Banks / Clients</div></div>
-          <div className="stat-card"><div className="stat-num">{valuations.length}</div><div className="stat-label">Total Valuations</div></div>
-          <div className="stat-card" style={{borderColor:"#c9921a"}}><div className="stat-num" style={{color:"#a87816"}}>{valuations.filter(v=>v.status==="pending").length}</div><div className="stat-label">Pending</div></div>
-          <div className="stat-card" style={{borderColor:"#3d6b5a"}}><div className="stat-num" style={{color:"#3d6b5a"}}>{valuations.filter(v=>v.status==="done").length}</div><div className="stat-label">Completed</div></div>
-          <div className="stat-card" style={{borderColor:"#5b3ea8",cursor:"pointer"}} onClick={()=>{refreshVisits();setView("visits");}}>
-            <div className="stat-num" style={{color:"#5b3ea8"}}>{fieldVisits.length}</div>
-            <div className="stat-label">Field Visits</div>
-          </div>
-        </div>
-        {view==="visits" && (
-          <div style={{marginBottom:24}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{fontSize:13,fontWeight:700,color:"var(--ink2)",textTransform:"uppercase",letterSpacing:".5px"}}>Submitted Field Visit Reports ({fieldVisits.length})</div>
-              <button className="btn btn-outline btn-sm" onClick={()=>setView("dashboard")}>✕ Close</button>
+
+        {/* ── BANKS TAB ──────────────────────────────────────────────────── */}
+        {activeTab==="dashboard" && <>
+          <div className="page-header">
+            <div>
+              <div className="page-title">Banks &amp; Clients</div>
+              <div className="page-sub">Click a bank to manage its valuations</div>
             </div>
-            {fieldVisits.length===0
-              ? <div style={{background:"white",borderRadius:12,padding:24,textAlign:"center",color:"var(--ink2)",fontSize:13}}>No field visits submitted yet.</div>
-              : <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  {[...fieldVisits].reverse().map((fv,i)=>(
-                    <div key={i} style={{background:"white",borderRadius:12,padding:"14px 18px",boxShadow:"var(--shadow)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-                      <div>
-                        <div style={{fontWeight:700,color:"var(--blue)",fontSize:13}}>{fv.ownerName||"Unnamed"} — {fv.propertyAddress}</div>
-                        <div style={{fontSize:11,color:"var(--ink2)",marginTop:3}}>By <strong>{fv.engineerName||"Unknown"}</strong> on {fv.visitDate||fv.submittedAt?.slice(0,10)}</div>
-                      </div>
-                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        {fv.geoLat&&fv.geoLng&&<a href={`https://maps.google.com/?q=${fv.geoLat},${fv.geoLng}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">📍 Map</a>}
-                        <button className="btn btn-sm" style={{background:"#fff0f0",color:"#dc3545",border:"1px solid #f5c2c7"}} onClick={()=>{
-                          if(!confirm("Delete this visit?")) return;
-                          const updated = fieldVisits.filter((_,fi)=>fi!==(fieldVisits.length-1-i));
-                          localStorage.setItem("kpsb_visits",JSON.stringify(updated));
-                          setFieldVisits(updated);
-                        }}>Delete</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-            }
+            <button className="btn btn-gold btn-lg" onClick={()=>setBankModal("new")}>+ Add Bank / Client</button>
           </div>
-        )}
-        <div style={{fontSize:11,fontWeight:700,color:"var(--ink2)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:13}}>Banks and Clients</div>
-        <div className="banks-grid">
-          {banks.map(b=>{
-            const cnt = valuations.filter(v=>v.bankId===b.id).length;
-            const done = valuations.filter(v=>v.bankId===b.id&&v.status==="done").length;
-            const tmpl = TEMPLATES.find(t=>t.id===b.reportTemplate);
-            return (
-              <div key={b.id} className="bank-card" onClick={()=>{setSelBank(b);setView("bank");}}>
-                <div className="bank-card-header" style={{background:"linear-gradient(135deg,"+b.color+","+b.color+"bb)"}}>
-                  <div style={{fontSize:22,marginBottom:6}}>🏦</div>
-                  <div className="bank-card-name">{b.name}</div>
-                  <div className="bank-card-branch">{b.branch}</div>
-                  <div style={{marginTop:5,fontSize:10,opacity:.75,background:"rgba(255,255,255,.15)",borderRadius:12,padding:"2px 8px",display:"inline-block"}}>{tmpl?.label||"Sectional"}</div>
-                </div>
-                <div style={{padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div style={{fontSize:12,color:"var(--ink2)"}}><strong style={{color:b.color,fontSize:15,fontFamily:"'Playfair Display',serif"}}>{cnt}</strong> valuation{cnt!==1?"s":""}  <strong style={{color:"var(--sage)"}}>{done}</strong> done</div>
-                  <div style={{display:"flex",gap:5}} onClick={e=>e.stopPropagation()}>
-                    <button className="btn btn-outline btn-sm" onClick={()=>setBankModal(b)}>Configure</button>
-                    <button className="btn btn-sm" style={{background:"#fff0f0",color:"#dc3545",border:"1px solid #f5c2c7"}} onClick={()=>delBank(b.id)}>Delete</button>
+          <div className="stats">
+            <div className="stat-card"><div className="stat-num">{banks.length}</div><div className="stat-label">Banks / Clients</div></div>
+            <div className="stat-card"><div className="stat-num">{valuations.length}</div><div className="stat-label">Total Valuations</div></div>
+            <div className="stat-card" style={{borderColor:"#c9921a"}}><div className="stat-num" style={{color:"#a87816"}}>{pendingVals.length}</div><div className="stat-label">In Progress</div></div>
+            <div className="stat-card" style={{borderColor:"#3d6b5a"}}><div className="stat-num" style={{color:"#3d6b5a"}}>{valuations.filter(v=>v.status==="done").length}</div><div className="stat-label">Completed</div></div>
+          </div>
+          <div className="banks-grid">
+            {banks.map(b=>{
+              const cnt = valuations.filter(v=>v.bankId===b.id).length;
+              const done = valuations.filter(v=>v.bankId===b.id&&v.status==="done").length;
+              const tmpl = TEMPLATES.find(t=>t.id===b.reportTemplate);
+              return (
+                <div key={b.id} className="bank-card" onClick={()=>{setSelBank(b);setView("bank");}}>
+                  <div className="bank-card-header" style={{background:"linear-gradient(135deg,"+b.color+","+b.color+"bb)"}}>
+                    <div style={{fontSize:22,marginBottom:6}}>🏦</div>
+                    <div className="bank-card-name">{b.name}</div>
+                    <div className="bank-card-branch">{b.branch}</div>
+                    <div style={{marginTop:5,fontSize:10,opacity:.75,background:"rgba(255,255,255,.15)",borderRadius:12,padding:"2px 8px",display:"inline-block"}}>{tmpl?.label||"Sectional"}</div>
+                  </div>
+                  <div style={{padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{fontSize:12,color:"var(--ink2)"}}><strong style={{color:b.color,fontSize:15,fontFamily:"'Playfair Display',serif"}}>{cnt}</strong> valuation{cnt!==1?"s":""}  <strong style={{color:"var(--sage)"}}>{done}</strong> done</div>
+                    <div style={{display:"flex",gap:5}} onClick={e=>e.stopPropagation()}>
+                      <button className="btn btn-outline btn-sm" onClick={()=>setBankModal(b)}>Configure</button>
+                      <button className="btn btn-sm" style={{background:"#fff0f0",color:"#dc3545",border:"1px solid #f5c2c7"}} onClick={()=>delBank(b.id)}>Delete</button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-          <div className="add-bank-card" onClick={()=>setBankModal("new")}>
-            <div style={{fontSize:28,color:"var(--gold)"}}>+</div>
-            <div style={{fontSize:12,fontWeight:600,color:"var(--ink2)"}}>Add New Bank / Client</div>
+              );
+            })}
+            <div className="add-bank-card" onClick={()=>setBankModal("new")}>
+              <div style={{fontSize:28,color:"var(--gold)"}}>+</div>
+              <div style={{fontSize:12,fontWeight:600,color:"var(--ink2)"}}>Add New Bank / Client</div>
+            </div>
           </div>
-        </div>
+        </>}
+
+        {/* ── PENDING QUEUE TAB ──────────────────────────────────────────── */}
+        {activeTab==="queue" && <>
+          <div className="page-header">
+            <div>
+              <div className="page-title">Pending Queue</div>
+              <div className="page-sub">Field visits awaiting conversion + in-progress valuations</div>
+            </div>
+          </div>
+
+          {/* Unprocessed field visits */}
+          {pendingVisits.length>0 && <>
+            <div style={{fontSize:11,fontWeight:700,color:"var(--ink2)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:10}}>
+              Field Visits — Awaiting Valuation ({pendingVisits.length})
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
+              {[...pendingVisits].reverse().map((fv,i)=>(
+                <div key={i} style={{background:"white",borderRadius:12,padding:"16px 18px",boxShadow:"var(--shadow)",border:"2px solid #ede9fb"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                        <span style={{background:"#ede9fb",color:"#5b3ea8",borderRadius:8,padding:"2px 8px",fontSize:10,fontWeight:700}}>FIELD VISIT</span>
+                        <span style={{fontSize:12,color:"var(--ink2)"}}>{fv.visitDate||fv.submittedAt?.slice(0,10)}</span>
+                      </div>
+                      <div style={{fontWeight:700,color:"var(--blue)",fontSize:14}}>{fv.ownerName||"Unnamed"}</div>
+                      <div style={{fontSize:12,color:"var(--ink2)",marginTop:2}}>{fv.propertyAddress}</div>
+                      <div style={{fontSize:11,color:"var(--ink2)",marginTop:4,opacity:.8}}>
+                        Engineer: {fv.engineerName||"Unknown"}
+                        {fv.photos?.length>0&&` · 📸 ${fv.photos.length} photos`}
+                        {fv.geoLat&&fv.geoLng&&` · 📍 ${fv.geoLat}, ${fv.geoLng}`}
+                      </div>
+                      {fv.photos?.length>0&&<div style={{display:"flex",gap:4,marginTop:8,flexWrap:"wrap"}}>
+                        {fv.photos.slice(0,6).map(p=><img key={p.id} src={p.url} alt={p.caption} style={{width:52,height:52,objectFit:"cover",borderRadius:6,border:"1px solid var(--border)"}}/>)}
+                        {fv.photos.length>6&&<div style={{width:52,height:52,borderRadius:6,background:"var(--paper)",border:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"var(--ink2)"}}>+{fv.photos.length-6}</div>}
+                      </div>}
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:6,minWidth:160}}>
+                      <button className="btn btn-gold" onClick={()=>convertVisitToValuation(fv)} style={{justifyContent:"center",fontSize:12}}>
+                        ➕ Create Valuation
+                      </button>
+                      {fv.geoLat&&fv.geoLng&&<a href={`https://maps.google.com/?q=${fv.geoLat},${fv.geoLng}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{textDecoration:"none",justifyContent:"center",textAlign:"center"}}>📍 View on Map</a>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>}
+
+          {/* In-progress valuations */}
+          {pendingVals.length>0 && <>
+            <div style={{fontSize:11,fontWeight:700,color:"var(--ink2)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:10}}>
+              In-Progress Valuations ({pendingVals.length})
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {pendingVals.map(val=>{
+                const bank = banks.find(b=>b.id===val.bankId);
+                return (
+                  <div key={val.id} style={{background:"white",borderRadius:12,padding:"16px 18px",boxShadow:"var(--shadow)",border:"2px solid #fff3cd"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                          <span style={{background:"#fff3cd",color:"#856404",borderRadius:8,padding:"2px 8px",fontSize:10,fontWeight:700}}>IN PROGRESS</span>
+                          {bank&&<span style={{background:bank.color+"22",color:bank.color,borderRadius:8,padding:"2px 8px",fontSize:10,fontWeight:700}}>{bank.name}</span>}
+                          <span style={{fontSize:12,color:"var(--ink2)"}}>{val.reportDate}</span>
+                        </div>
+                        <div style={{fontWeight:700,color:"var(--blue)",fontSize:14}}>{val.ownerName||"Unnamed"}</div>
+                        <div style={{fontSize:12,color:"var(--ink2)",marginTop:2}}>{val.propertyAddress}</div>
+                      </div>
+                      <div style={{display:"flex",gap:6}}>
+                        <button className="btn btn-gold btn-sm" onClick={()=>{setSelBank(bank);openVal(val);}} style={{justifyContent:"center"}}>
+                          ✏️ Continue
+                        </button>
+                        <button className="btn btn-outline btn-sm" onClick={()=>{setSelBank(bank);openVal(val,true);}}>
+                          👁 View
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>}
+
+          {pendingCount===0 && (
+            <div style={{background:"white",borderRadius:16,padding:"48px 24px",textAlign:"center",boxShadow:"var(--shadow)"}}>
+              <div style={{fontSize:40,marginBottom:12}}>✅</div>
+              <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:"var(--blue)",marginBottom:8}}>All clear</div>
+              <div style={{fontSize:13,color:"var(--ink2)"}}>No pending field visits or in-progress valuations.</div>
+            </div>
+          )}
+        </>}
+
+        {/* ── ALL VALUATIONS TAB ─────────────────────────────────────────── */}
+        {activeTab==="valuations" && <>
+          <div className="page-header">
+            <div>
+              <div className="page-title">All Valuations</div>
+              <div className="page-sub">{valuations.length} total across {banks.length} banks</div>
+            </div>
+          </div>
+          {valuations.length===0
+            ? <div style={{background:"white",borderRadius:16,padding:"48px 24px",textAlign:"center",boxShadow:"var(--shadow)"}}>
+                <div style={{fontSize:13,color:"var(--ink2)"}}>No valuations yet. Start by clicking a bank.</div>
+              </div>
+            : <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {[...valuations].reverse().map(val=>{
+                  const bank = banks.find(b=>b.id===val.bankId);
+                  const statusColor = val.status==="done" ? "#3d6b5a" : val.status==="progress" ? "#856404" : "#5b3ea8";
+                  const statusBg    = val.status==="done" ? "#d1e7dd" : val.status==="progress" ? "#fff3cd" : "#ede9fb";
+                  const statusLabel = val.status==="done" ? "DONE" : val.status==="progress" ? "DRAFT" : "PENDING";
+                  return (
+                    <div key={val.id} style={{background:"white",borderRadius:12,padding:"14px 18px",boxShadow:"var(--shadow)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+                          <span style={{background:statusBg,color:statusColor,borderRadius:8,padding:"2px 8px",fontSize:10,fontWeight:700}}>{statusLabel}</span>
+                          {bank&&<span style={{background:bank.color+"22",color:bank.color,borderRadius:8,padding:"2px 8px",fontSize:10,fontWeight:700}}>{bank.name}</span>}
+                          <span style={{fontSize:11,color:"var(--ink2)"}}>{val.reportDate}</span>
+                          {val.driveLink&&<a href={val.driveLink} target="_blank" rel="noreferrer" style={{fontSize:11,color:"var(--sage)"}}>📂 Drive</a>}
+                        </div>
+                        <div style={{fontWeight:700,color:"var(--blue)",fontSize:14}}>{val.ownerName||"Unnamed"}</div>
+                        <div style={{fontSize:12,color:"var(--ink2)",marginTop:2}}>{val.propertyAddress}</div>
+                        {val.finalValue&&<div style={{fontSize:12,fontWeight:600,color:"var(--gold-dark)",marginTop:3}}>FMV: Rs.{fmt(val.finalValue)}</div>}
+                      </div>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        {val.status==="done"
+                          ? <button className="btn btn-outline btn-sm" onClick={()=>{setSelBank(bank);openVal(val,true);}}>📄 Report</button>
+                          : <button className="btn btn-gold btn-sm" onClick={()=>{setSelBank(bank);openVal(val);}}>✏️ Continue</button>
+                        }
+                        <button className="btn btn-sm" style={{background:"#fff0f0",color:"#dc3545",border:"1px solid #f5c2c7"}} onClick={()=>delVal(val.id)}>Delete</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+          }
+        </>}
+
+        {/* ── FIELD VISITS ARCHIVE TAB ──────────────────────────────────── */}
+        {activeTab==="visits" && <>
+          <div className="page-header">
+            <div>
+              <div className="page-title">Field Visit Archive</div>
+              <div className="page-sub">{fieldVisits.length} total submitted visits</div>
+            </div>
+            <button className="btn btn-outline" onClick={refreshVisits}>↻ Refresh</button>
+          </div>
+          {fieldVisits.length===0
+            ? <div style={{background:"white",borderRadius:16,padding:"48px 24px",textAlign:"center",boxShadow:"var(--shadow)"}}>
+                <div style={{fontSize:13,color:"var(--ink2)"}}>No field visits submitted yet.</div>
+              </div>
+            : <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {[...fieldVisits].reverse().map((fv,i)=>{
+                  const converted = valuations.some(v=>v.fromVisitId===fv.id);
+                  return (
+                    <div key={i} style={{background:"white",borderRadius:12,padding:"16px 18px",boxShadow:"var(--shadow)",border:`2px solid ${converted?"#d1e7dd":"#ede9fb"}`}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+                        <div style={{flex:1}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+                            <span style={{background:converted?"#d1e7dd":"#ede9fb",color:converted?"#3d6b5a":"#5b3ea8",borderRadius:8,padding:"2px 8px",fontSize:10,fontWeight:700}}>
+                              {converted?"✅ CONVERTED":"⏳ PENDING"}
+                            </span>
+                            <span style={{fontSize:12,color:"var(--ink2)"}}>{fv.visitDate||fv.submittedAt?.slice(0,10)}</span>
+                          </div>
+                          <div style={{fontWeight:700,color:"var(--blue)",fontSize:14}}>{fv.ownerName||"Unnamed"}</div>
+                          <div style={{fontSize:12,color:"var(--ink2)",marginTop:2}}>{fv.propertyAddress}</div>
+                          <div style={{fontSize:11,color:"var(--ink2)",marginTop:4,opacity:.8}}>Engineer: {fv.engineerName||"Unknown"}{fv.photos?.length>0&&` · 📸 ${fv.photos.length} photos`}</div>
+                          {fv.photos?.length>0&&<div style={{display:"flex",gap:4,marginTop:8,flexWrap:"wrap"}}>
+                            {fv.photos.slice(0,6).map(p=><img key={p.id} src={p.url} alt={p.caption} style={{width:52,height:52,objectFit:"cover",borderRadius:6,border:"1px solid var(--border)"}}/>)}
+                            {fv.photos.length>6&&<div style={{width:52,height:52,borderRadius:6,background:"var(--paper)",border:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"var(--ink2)"}}>+{fv.photos.length-6}</div>}
+                          </div>}
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",gap:6,minWidth:150}}>
+                          {!converted&&<button className="btn btn-gold btn-sm" onClick={()=>convertVisitToValuation(fv)} style={{justifyContent:"center"}}>➕ Create Valuation</button>}
+                          {fv.geoLat&&fv.geoLng&&<a href={`https://maps.google.com/?q=${fv.geoLat},${fv.geoLng}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{textDecoration:"none",justifyContent:"center",textAlign:"center"}}>📍 Map</a>}
+                          <button className="btn btn-sm" style={{background:"#fff0f0",color:"#dc3545",border:"1px solid #f5c2c7",justifyContent:"center"}} onClick={()=>{
+                            if(!confirm("Delete this visit?")) return;
+                            const updated = [...fieldVisits].reverse().filter((_,fi)=>fi!==i).reverse();
+                            localStorage.setItem("kpsb_visits",JSON.stringify(updated));
+                            setFieldVisits(updated);
+                          }}>Delete</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+          }
+        </>}
+
       </div>
     </div>
   );
